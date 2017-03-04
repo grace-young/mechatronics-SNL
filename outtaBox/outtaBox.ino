@@ -45,21 +45,17 @@ void setup() {
 
 void loop() {
 
-delay(50);
+//delay(50);
 
   switch(state){
-    case STATE_ROTATE:
-    
-      
+    case STATE_ROTATE:    
       rotateToStrafe();
-      
       break;
     case STATE_STRAFE:
       strafeToStop();
 //      analogWrite(output, 180);
       break;
     case STATE_STOP:
-       
       analogWrite(output, 160);
       break;
     default:
@@ -71,12 +67,14 @@ delay(50);
 void pingAverage(){
     long x=sonarX.ping();
     if (x>50 && x<MAX_DISTANCE){
-      sonarXwork=x;
+      // greater than 50 because sometimes sensors give 0
+      sonarXwork=x; // old value
       bufferGyroValuesX[current]=x;
     } else {
       bufferGyroValuesX[current]=sonarXwork;
     }
 
+    // don't need as much accuracy for y direction
     long y=sonarY.ping()/10;
     if (y>50 && y<MAX_DISTANCE){
       sonarYwork=y;
@@ -107,50 +105,61 @@ void pingAverage(){
 void rotateToStrafe(){
   counter++;
   if (micros()-timePast>=5){
-    
-    pingAverage();
+    // want to be slight delay because clock too fast to count pings
+    pingAverage(); // runs 4 times before we get *actual* value
     if (counter>=5 && counter<=8){
+      // set direction of motor only once
       if (sonarYval>275){
         Serial.println("right/clockwise");
         analogWrite(output, 140);
+        // CHANGES DIRECTION --> right
       } else {
         Serial.println("left/counterclockwise");
         analogWrite(output, 120);
+        // CHANGES DIRECTION --> left
       }
     }
-    if (sonarXval<minimum && sonarXval !=0){
-      minimum=sonarXval;
-      check=0;
+    if (sonarXval < minimum && sonarXval != 0){
+      minimum = sonarXval;
+      check = 0;
     } 
-    if (sonarXval-minimum>=5 && sonarXval<500){
-      check++;
-      if (check>=1){
-        
+    if (abs(sonarXval - minimum) <= 5 && sonarXval < 500){
+      //if (abs(sonarXval - minimum) >= 5 && sonarXval<500){
+      // might have to play around with 5
+      // maybe less than 5
+      check++; 
+      if (check >= 1){
+        // might have to change to >= 3
+        // 160 makes robot turn right
 //        analogWrite(output, 160);
-        counter=0;
+          counter=0; // --> for init 5 times in the beginning
           Serial.println("change state");
+          analogWrite(output, 160); // stop spinning
           state=STATE_STRAFE;
           check=0;
       }
     }
     
-    timePast=micros();
+    timePast=micros(); // this has certain time, want 5 microseconds
   }
 }
 void strafeToStop(){
   counter++;
-  if (micros()-timePast>=25){
+  if (micros()-timePast >= 25){
+    // wait longer to ping b/c y is giving more issues
     pingAverage();
-    if (counter>=5 && counter<=10){
-      if (sonarYval>275){
-        Serial.println("right");
-        analogWrite(output, 100);
-      } else {
-        Serial.println("left");
-        analogWrite(output, 180);
-      }
+    //if (counter>=5 && counter<=10){
+      if (counter < 3){
+        if (sonarYval > 275){
+          Serial.println("right");
+          analogWrite(output, 100);
+        } else {
+          Serial.println("left");
+          analogWrite(output, 180);
+        }
     }
-    if (sonarYval>=265 && sonarYval<=275){
+    if (sonarYval >= 265 && sonarYval <= 275){
+      // test the 265 to 275 range on horz side of board
       check++;
       if (check>=3){
         Serial.println("stop!!!");
