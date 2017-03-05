@@ -13,7 +13,9 @@
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
 
-
+long orientation = 0;
+int prevZ;
+bool flag;
 
 // This function read Nbytes bytes from I2C device at address Address. 
 // Put read bytes starting at register Register in the Data array. 
@@ -60,7 +62,6 @@ void setup()
   // Request first magnetometer single measurement
   I2CwriteByte(MAG_ADDRESS,0x0A,0x01);
 
-
 }
 
 
@@ -91,9 +92,23 @@ void loop() {
   int16_t gx=-(Buf[8]<<8 | Buf[9]);
   int16_t gy=-(Buf[10]<<8 | Buf[11]);
   int16_t gz=Buf[12]<<8 | Buf[13];
-  
+
+   // Accelerometer
+  int16_t ax=-(Buf[0]<<8 | Buf[1]);
+  int16_t ay=-(Buf[2]<<8 | Buf[3]);
+  int16_t az=Buf[4]<<8 | Buf[5];
   
   // Display Gyroscope Values
+
+  Serial.print("ax ");
+  Serial.print(ax, DEC);
+
+  Serial.print("ay ");
+  Serial.print(ay,DEC);
+
+  Serial.print("az ");
+  Serial.print(az,DEC);
+  Serial.print(" ");
   Serial.print ("x ");
   Serial.print (gx,DEC); 
   Serial.print ("\t");
@@ -103,25 +118,33 @@ void loop() {
   Serial.print ("z ");
   Serial.print (gz,DEC);  
   Serial.print ("\t");
+  Serial.print (prevZ);
+  Serial.print("   ");
+  Serial.println(orientation);
+  flag = false;
+  if ( (abs(gx) > 600 || abs(gy) > 600)) {
+    flag = true;
+  }
+  if((gz<0 && prevZ >0) && (gz>0 && prevZ <0)&&abs(gz) > 15){
+    orientation -= prevZ/10;
+  }
+  else if ( (abs(gx) > 600 || abs(gy) > 600) && abs(gz) > 100) {
+    orientation += gz/10;
+  }
+  else if (abs(gz) > 15 && !flag) {
+    orientation += gz/10;
+  }
+  prevZ = gz;
 
-  
-  // _____________________
-  // :::  Magnetometer ::: 
 
   
   // Read register Status 1 and wait for the DRDY: Data Ready
   
   uint8_t ST1;
-//  do
-//  {
-//    I2Cread(MAG_ADDRESS,0x02,1,&ST1);
-//  }
-//  while (!(ST1&0x01));
 
-  // Read magnetometer data  
-  uint8_t Mag[7];  
-  I2Cread(MAG_ADDRESS,0x03,7,Mag);
   
+  
+
 
   // Create 16 bits values from 8 bits data
   
