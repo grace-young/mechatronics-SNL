@@ -47,7 +47,7 @@ static int motor_speed2_normal= 203;
 static int motor_speed3_normal= 165;  
 static int motor_speed4_normal= 173;
 
-static int motor_speed1_slow= 80;
+static int motor_speed1_slow= 80; // this was 80
 static int motor_speed2_slow= 80;  
 static int motor_speed3_slow= 80;  
 static int motor_speed4_slow= 80;
@@ -59,10 +59,12 @@ volatile int prev_time_motor_control = 0;
 volatile int pwm_value_motor_speed = 0;
 volatile int prev_time_motor_speed = 0;
 
+unsigned long time_last_printed;
+
 void setup() {
   SawTape = false;
-  Serial.begin(230400);
-  TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
+  Serial.begin(115200);
+//  TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   SetupPins();
   attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
   attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
@@ -70,11 +72,18 @@ void setup() {
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
   analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);  
+  time_last_printed = millis();
 }
 
+// TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
-  decodeSignalsFromBrain();
+  int motorspeed = decodeSignalsFromBrain();
+  updateMotorSpeeds();
+  //if(millis()-time_last_printed > 500){
+  //    Serial.println(motorspeed);
+  //    time_last_printed = millis();
+  //}
   //goRightOmniDir();
  // if(!SawTape){
    // goForwardOmniDir();
@@ -88,31 +97,50 @@ void loop() {
   //printTapeDate();
 }
 
-void decodeSignalsFromBrain(){
+void updateMotorSpeeds(){
+  analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
+  analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
+  analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
+  analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
+  Serial.println("Wrote speed:");
+  Serial.println(motor_speed1);  
+}
+
+int decodeSignalsFromBrain(){
   int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
-  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 2);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 3);
+
+
+  // 0-640 --> 0
+  // 640-1280 --> 1
+  // 510-765 --> 2
+  // UNCLEAR IF THIS WORKS OR NOT
 //  Serial.println(pwm_value_motor_control);
 //  Serial.println(state);
   switch(motorspeed){
     case 0:
+      Serial.println("0");
       motor_speed1 = motor_speed1_normal;
       motor_speed2 = motor_speed2_normal;
       motor_speed3 = motor_speed3_normal;
       motor_speed4 = motor_speed4_normal;
       break;
     case 1:
+      Serial.println("1");
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
       motor_speed4 = motor_speed4_slow;
       break;
     case 2:
+      Serial.println("2");
       motor_speed1 = motor_speed1_fast;
       motor_speed2 = motor_speed2_fast;
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
       break;
     default:
+      Serial.println("default");
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
@@ -149,6 +177,7 @@ void decodeSignalsFromBrain(){
       coastStopAll();
       break;
   }
+  return motorspeed;
 }
 
 void findFreqMotorControl(){

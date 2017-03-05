@@ -5,10 +5,24 @@
 #define TRIGGER_PIN_Y 12
 #define ECHO_PIN_Y  13
 
+#define COMM_MOTOR_NORMAL  50
+#define COMM_MOTOR_SLOW    100
+#define COMM_MOTOR_FAST    200
+
+#define COMM_MOTOR_COAST_STOP 20
+#define COMM_MOTOR_FORWARD 40
+#define COMM_MOTOR_BACKWARD 60
+#define COMM_MOTOR_LEFT 80
+#define COMM_MOTOR_RIGHT 100
+#define COMM_MOTOR_SPIN_CC 120
+#define COMM_MOTOR_SPIN_CL 140
+#define COMM_MOTOR_STOP 160
+
 #define MAX_DISTANCE 4000
 #define ITERATIONS  5
 
-#define output 3
+#define PIN_OUTPUT_MOTOR_CONTROL 3
+#define PIN_OUTPUT_SPEED_CONTROL 9
 
 int bufferGyroValuesX[ITERATIONS];
 int bufferGyroValuesY[ITERATIONS];
@@ -33,8 +47,7 @@ States_t state;
 
 void setup() {
   state=STATE_ROTATE;
-  
-  pinMode(output, OUTPUT);
+  pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
   Serial.begin(115200);
   for (int i=0; i<ITERATIONS; i++){
     bufferGyroValuesX[i]=MAX_DISTANCE;
@@ -46,17 +59,17 @@ void setup() {
 void loop() {
 
 //delay(50);
-
+  digitalWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW);
   switch(state){
     case STATE_ROTATE:    
       rotateToStrafe();
       break;
     case STATE_STRAFE:
       strafeToStop();
-//      analogWrite(output, 180);
+//      analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_LEFT);
       break;
     case STATE_STOP:
-      analogWrite(output, 160);
+      analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_STOP);
       break;
     default:
       Serial.println("FUCK");
@@ -100,8 +113,10 @@ void pingAverage(){
     }
   
   String toprint="counter: "+(String)counter+" sonarXval: "+(String)sonarXval +" xMin: "+(String) minimum+" y: "+y+" sonarYVal: "+(String)sonarYval+ " state: "+(String)state;
-    Serial.println(toprint);
+  //  Serial.println(toprint);
 }
+
+
 void rotateToStrafe(){
   counter++;
   if (micros()-timePast>=5){
@@ -111,11 +126,11 @@ void rotateToStrafe(){
       // set direction of motor only once
       if (sonarYval>275){
         Serial.println("right/clockwise");
-        analogWrite(output, 140);
-        // CHANGES DIRECTION --> right
+        analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+        // CHANGES DIRECTIO N --> right
       } else {
         Serial.println("left/counterclockwise");
-        analogWrite(output, 120);
+        analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
         // CHANGES DIRECTION --> left
       }
     }
@@ -124,17 +139,16 @@ void rotateToStrafe(){
       check = 0;
     } 
     if (abs(sonarXval - minimum) <= 5 && sonarXval < 500){
-      //if (abs(sonarXval - minimum) >= 5 && sonarXval<500){
+      //if (abs(sonarXval - minimum) >= 5 && sonarXval<500)
       // might have to play around with 5
       // maybe less than 5
       check++; 
       if (check >= 1){
         // might have to change to >= 3
-        // 160 makes robot turn right
-//        analogWrite(output, 160);
+        // COMM_MOTOR_STOP makes robot turn right
           counter=0; // --> for init 5 times in the beginning
           Serial.println("change state");
-          analogWrite(output, 160); // stop spinning
+          analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_STOP); // stop spinning
           state=STATE_STRAFE;
           check=0;
       }
@@ -143,6 +157,7 @@ void rotateToStrafe(){
     timePast=micros(); // this has certain time, want 5 microseconds
   }
 }
+
 void strafeToStop(){
   counter++;
   if (micros()-timePast >= 25){
@@ -152,10 +167,10 @@ void strafeToStop(){
       if (counter < 3){
         if (sonarYval > 275){
           Serial.println("right");
-          analogWrite(output, 100);
+          analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_RIGHT);
         } else {
           Serial.println("left");
-          analogWrite(output, 180);
+          analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_LEFT);
         }
     }
     if (sonarYval >= 265 && sonarYval <= 275){
