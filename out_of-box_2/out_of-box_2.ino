@@ -12,9 +12,6 @@
 
 #define TIMER_0            0
 
-#define motorStateOut 3
-#define motorSpeed 9
-
 #define COMM_MOTOR_NORMAL  50
 #define COMM_MOTOR_SLOW    100
 #define COMM_MOTOR_FAST    200
@@ -28,12 +25,10 @@
 #define COMM_MOTOR_SPIN_CL 140
 #define COMM_MOTOR_STOP 160
 
+#define PIN_COMMS_IN_GYRO        2
 #define PIN_OUTPUT_MOTOR_CONTROL 3
 #define PIN_OUTPUT_SPEED_CONTROL 9
 
-#define FWD_SAFE_SPACE 1
-#define ALIGN_SAFE_SPACE 2
-#define MOVE_ON_LINE 3
 
 #define slow 80
 #define normal 160
@@ -53,7 +48,7 @@
  */
 
 typedef enum {
-  LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
+  ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
   FOUND_T_LINE
 } States_t;
 
@@ -104,6 +99,9 @@ void loop() {
 
 void CheckGlobalStates(void){
   switch (state){
+    case ORIENTATION_STRAIGHT:
+      RespOrientationStraight();
+      break;
     case LOOKING_FOR_TAPE:
       RespStateLookingForTape();
       break;
@@ -122,6 +120,10 @@ void CheckGlobalStates(void){
     default:
       break;
   }
+  
+}
+
+void RespOrientationStraight(){
   
 }
 
