@@ -94,20 +94,20 @@ void loop() {
   int16_t gz=Buf[12]<<8 | Buf[13];
 
    // Accelerometer
-  int16_t ax=-(Buf[0]<<8 | Buf[1]);
-  int16_t ay=-(Buf[2]<<8 | Buf[3]);
-  int16_t az=Buf[4]<<8 | Buf[5];
+//  int16_t ax=-(Buf[0]<<8 | Buf[1]);
+//  int16_t ay=-(Buf[2]<<8 | Buf[3]);
+//  int16_t az=Buf[4]<<8 | Buf[5];
   
   // Display Gyroscope Values
 
-  Serial.print("ax ");
-  Serial.print(ax, DEC);
-
-  Serial.print("ay ");
-  Serial.print(ay,DEC);
-
-  Serial.print("az ");
-  Serial.print(az,DEC);
+//  Serial.print("ax ");
+//  Serial.print(ax, DEC);
+//
+//  Serial.print("ay ");
+//  Serial.print(ay,DEC);
+//
+//  Serial.print("az ");
+//  Serial.print(az,DEC);
   Serial.print(" ");
   Serial.print ("x ");
   Serial.print (gx,DEC); 

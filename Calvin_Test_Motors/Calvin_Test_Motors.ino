@@ -2,6 +2,7 @@
 
 #define MotorControlPin 2
 #define MotorSpeedControlPin 3
+#define COMMS_OUT_TO_BRAIN 9
 
 #define SENSOR_1 A3
 #define SENSOR_2 A5
@@ -13,9 +14,9 @@
 #define TIMER_0            0
 
 #define WHEEL_FOUR_L 4
-#define WHEEL_FOUR_R A1
+#define WHEEL_FOUR_R A2
 
-#define WHEEL_TWO_L 6
+#define WHEEL_TWO_L A1
 #define WHEEL_TWO_R A0
 
 #define WHEEL_THREE_L 12
@@ -26,7 +27,7 @@
 
 // each enable pin must be able to analogWrite to
 #define WHEEL_ONE_ENABLE     10
-#define WHEEL_TWO_ENABLE     9
+#define WHEEL_TWO_ENABLE     6
 #define WHEEL_THREE_ENABLE   11
 #define WHEEL_FOUR_ENABLE    5
 
