@@ -6,6 +6,13 @@
 #define SENSOR_D 8
 #define SENSOR_E 5
 
+#define PIN_COMMS_IN_GYRO        2
+#define PIN_OUTPUT_MOTOR_CONTROL 3
+#define PIN_OUTPUT_SPEED_CONTROL 9
+#define PIN_INPUT_BUMPER A0
+
+#define PIN_GAME_START           10
+
 #define TIME_INTERVAL      500
 #define JIGGLE_INTERVAL    400
 #define TIME_INTERVAL_2    1000
@@ -25,14 +32,19 @@
 #define COMM_MOTOR_SPIN_CL 140
 #define COMM_MOTOR_STOP 160
 
-#define PIN_COMMS_IN_GYRO        2
-#define PIN_OUTPUT_MOTOR_CONTROL 3
-#define PIN_OUTPUT_SPEED_CONTROL 9
 
 
 #define slow 80
 #define normal 160
 #define fast 240
+
+static bool startGyroNegative = false;
+
+volatile int prev_time_comms = 0;
+volatile int pwm_value_comms = 0;
+
+static unsigned long fake_timer;
+
 
 /*STATE_ON_CROSS_LINE_A_B_C_D_E, STATE_BOTTOM_T_LINE_B_C_D_E, STATE_ON_HORZ_LINE_B_C_D,  
   STATE_NO_TAPE_DETECTED, STATE_ONLY_TAPE_E, STATE_ONLY_TAPE_D,
@@ -48,8 +60,8 @@
  */
 
 typedef enum {
-  ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
-  FOUND_T_LINE
+  WAIT, START, ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
+  FOUND_T_LINE, AT_BACK_OF_BOX
 } States_t;
 
 States_t state;
@@ -60,20 +72,24 @@ unsigned char isTapeOn_D;
 unsigned char isTapeOn_E;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(19200);
   //TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   isTapeOn_A = false;
   isTapeOn_B = false;
   isTapeOn_C = false;
   isTapeOn_D = false;
   isTapeOn_E = false;
-  state = LOOKING_FOR_TAPE;
+  state = WAIT;
   
   makeMotorsMoveForward();
 
   SetupPins();
   
   TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
+
+  //Interupt for reading the Comms from gyro
+   attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), findFreqComms, RISING);
+   fake_timer = millis();
 }
 
 
@@ -83,9 +99,10 @@ void loop() {
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
+  //Serial.println(state);
   if(TMRArd_IsTimerExpired(TIMER_0)){
     String toprint = "state: " + (String)state + "\nA: " + (String)isTapeOn_A + " B:"+(String)isTapeOn_B + " C:" + (String)isTapeOn_C + " D:" + (String)isTapeOn_D + " E:" + (String)isTapeOn_E;
-    Serial.println(toprint);
+    //Serial.println(state);
     TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   }
   //if(goingFirstShootSpot){
@@ -93,12 +110,16 @@ void loop() {
   //}
 }
 
-
-
-
-
 void CheckGlobalStates(void){
+  Serial.print("STATE: ");
+  Serial.println(state);
   switch (state){
+    case WAIT:
+      RespToWait();
+      break;
+    case START:
+      RespToStart();
+      break;
     case ORIENTATION_STRAIGHT:
       RespOrientationStraight();
       break;
@@ -117,14 +138,82 @@ void CheckGlobalStates(void){
     case FOUND_T_LINE:
       RespFoundTLine();
       break;
+    case AT_BACK_OF_BOX:
+      RespAtBackOfBox();
+      break;
     default:
       break;
   }
   
 }
 
+void findFreqComms(){
+  attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), freqCountComms, FALLING);
+  prev_time_comms = micros();
+}
+
+void freqCountComms(){
+  attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), findFreqComms, RISING);
+  pwm_value_comms = micros() - prev_time_comms;
+}
+
+int decodeSignalFromComms(){
+  int commsState = map(pwm_value_comms, 0, 1920, 0, 11);
+  /*
+   * 0 - gyro negative
+   * 1 - gyro positive
+   */
+   Serial.print(pwm_value_comms);
+   Serial.print(" ");
+   Serial.print(state);
+   Serial.print(" ");
+   Serial.println(commsState);
+  return commsState;
+}
+
+void RespAtBackOfBox(){
+    makeMotorsMoveForward();
+    if(millis() - fake_timer >= 1000){
+      makeMotorsStop();
+    }
+    if (ReadTapeSensor_A()){
+      
+    }
+}
+
+void RespToWait(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL,COMM_MOTOR_COAST_STOP);
+  if(decodeSignalFromComms() == 0){
+      startGyroNegative = true;
+  }else{
+      startGyroNegative = false;
+  }
+  if(!digitalRead(PIN_GAME_START)){
+    state = START;
+  }
+}
+
+void RespToStart(){
+  analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW);
+  if(startGyroNegative && (decodeSignalFromComms() == 0)){
+    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+  } else if(!startGyroNegative && (decodeSignalFromComms() == 1)){
+    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+  } else{
+    state = ORIENTATION_STRAIGHT;
+    fake_timer = millis();
+  }
+}
+
 void RespOrientationStraight(){
-  
+  // stop
+  makeMotorsMoveBackward();
+  // go backward for 2 seconds
+  if( millis() - fake_timer >= 2000){
+    // go backward
+    state = AT_BACK_OF_BOX;
+    fake_timer = millis();
+  }
 }
 
 void RespFoundTLine(){
@@ -733,6 +822,8 @@ void SetupPins(){
   pinMode(SENSOR_E, INPUT);
   pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
   pinMode(PIN_OUTPUT_SPEED_CONTROL, OUTPUT);
+  pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
+  pinMode(PIN_GAME_START, INPUT_PULLUP);
 }
 
 /*

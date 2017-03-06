@@ -1,14 +1,9 @@
 #include <Timers.h>
+#include <Wire.h>
 
 #define MotorControlPin 2
 #define MotorSpeedControlPin 3
 #define COMMS_OUT_TO_BRAIN 9
-
-#define SENSOR_1 A3
-#define SENSOR_2 A5
-#define SENSOR_3 A4
-#define SENSOR_4 A2
-#define SENSOR_5 A1
 
 #define TIME_INTERVAL      500
 #define TIMER_0            0
@@ -33,6 +28,25 @@
 
 #define LIMIT_ON_ANALOG      255
 
+//Gyro Stuff
+#define    MPU9250_ADDRESS            0x68
+#define    MAG_ADDRESS                0x0C
+
+#define    GYRO_FULL_SCALE_250_DPS    0x00  
+#define    GYRO_FULL_SCALE_500_DPS    0x08
+#define    GYRO_FULL_SCALE_1000_DPS   0x10
+#define    GYRO_FULL_SCALE_2000_DPS   0x18
+
+#define    ACC_FULL_SCALE_2_G        0x00  
+#define    ACC_FULL_SCALE_4_G        0x08
+#define    ACC_FULL_SCALE_8_G        0x10
+#define    ACC_FULL_SCALE_16_G       0x18
+//Gyro stuff ends
+
+//commands to Brain 
+#define   GYRO_NEGATIVE             20
+#define   GYRO_POSITIVE             40
+
 static int motor_speed1= 155;
 static int motor_speed2= 203;  
 static int motor_speed3= 165;  
@@ -48,12 +62,11 @@ static int motor_speed2_normal= 203;
 static int motor_speed3_normal= 165;  
 static int motor_speed4_normal= 173;
 
-static int motor_speed1_slow= 80; // this was 80
-static int motor_speed2_slow= 80;  
-static int motor_speed3_slow= 80;  
-static int motor_speed4_slow= 80;
+static int motor_speed1_slow= 70; // this was 80
+static int motor_speed2_slow= 70;  
+static int motor_speed3_slow= 70;  
+static int motor_speed4_slow= 70;
 
-static bool SawTape;    
 
 volatile int pwm_value_motor_control = 0;
 volatile int prev_time_motor_control = 0;
@@ -62,11 +75,26 @@ volatile int prev_time_motor_speed = 0;
 
 unsigned long time_last_printed;
 
+//Gyro variables
+long orientation = 0;
+int prevZ;
+bool flag;
+long int cpt=0; //count
+bool statedPositive;
+//Gyro variables end
+
 void setup() {
-  SawTape = false;
   Serial.begin(115200);
-//  TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
+  Wire.begin();
+
+  //Gyro Configuration
+  // Configure gyroscope range
+  I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
+  // Configure accelerometers range
+  I2CwriteByte(MPU9250_ADDRESS,28,ACC_FULL_SCALE_16_G);
+  
   SetupPins();
+  
   attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
   attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
@@ -79,23 +107,73 @@ void setup() {
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
-  int motorspeed = decodeSignalsFromBrain();
+  decodeSignalsFromBrain();
   updateMotorSpeeds();
-  //if(millis()-time_last_printed > 500){
-  //    Serial.println(motorspeed);
-  //    time_last_printed = millis();
-  //}
-  //goRightOmniDir();
- // if(!SawTape){
-   // goForwardOmniDir();
-  //}
-  //else{
-  //  stopAllWheels();
-  //}
-  if(!(digitalRead(SENSOR_1) && digitalRead(SENSOR_2) && digitalRead(SENSOR_3) && digitalRead(SENSOR_4) && digitalRead(SENSOR_5))){
-    SawTape = true;
+  communicateGyroInfo();
+  
+////////////GYRO
+
+//  Serial.print (cpt++,DEC); //Used to debug gyro
+//  Serial.print ("\t");
+  uint8_t Buf[14];
+  I2Cread(MPU9250_ADDRESS,0x3B,14,Buf);
+  // Create 16 bits values from 8 bits data
+  
+  // Gyroscope
+  int16_t gx=-(Buf[8]<<8 | Buf[9]);
+  int16_t gy=-(Buf[10]<<8 | Buf[11]);
+  int16_t gz=Buf[12]<<8 | Buf[13];
+
+   // Accelerometer
+//  int16_t ax=-(Buf[0]<<8 | Buf[1]);
+//  int16_t ay=-(Buf[2]<<8 | Buf[3]);
+//  int16_t az=Buf[4]<<8 | Buf[5];
+
+//  Serial.print("ax ");
+//  Serial.print(ax, DEC);
+//
+//  Serial.print("ay ");
+//  Serial.print(ay,DEC);
+//
+//  Serial.print("az ");
+//  Serial.print(az,DEC);
+//  Serial.print(" ");
+  Serial.print ("x ");
+  Serial.print (gx,DEC); 
+  Serial.print ("\t");
+  Serial.print ("y ");
+  Serial.print (gy,DEC);
+  Serial.print ("\t");
+  Serial.println("z ");
+  Serial.println(gz,DEC);  
+  Serial.print ("\t");
+  Serial.print (prevZ);
+  Serial.print("   ");
+  Serial.println(orientation);
+  flag = false;
+  if ( (abs(gx) > 600 || abs(gy) > 600)) {
+    flag = true;
   }
-  //printTapeDate();
+  if((gz<0 && prevZ >0) && (gz>0 && prevZ <0)&&abs(gz) > 15){
+    orientation -= prevZ/10;
+  }
+  else if ( (abs(gx) > 600 || abs(gy) > 600) && abs(gz) > 100) {
+    orientation += gz/10;
+  }
+  else if (abs(gz) > 15 && !flag) {
+    orientation += gz/10;
+  }
+  prevZ = gz;
+
+  // Read register Status 1 and wait for the DRDY: Data Ready
+  
+  uint8_t ST1;
+  // Create 16 bits values from 8 bits data
+  
+  // End of line
+//  Serial.println("");
+
+////////////GYRO END
 }
 
 void updateMotorSpeeds(){
@@ -103,11 +181,11 @@ void updateMotorSpeeds(){
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
   analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
-  Serial.println("Wrote speed:");
-  Serial.println(motor_speed1);  
+//  Serial.println("Wrote speed:");
+//  Serial.println(motor_speed1);  
 }
 
-int decodeSignalsFromBrain(){
+void decodeSignalsFromBrain(){
   int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
   int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 3);
 
@@ -116,32 +194,32 @@ int decodeSignalsFromBrain(){
   // 640-1280 --> 1
   // 510-765 --> 2
   // UNCLEAR IF THIS WORKS OR NOT
-//  Serial.println(pwm_value_motor_control);
-//  Serial.println(state);
+  Serial.println(pwm_value_motor_control);
+  Serial.println(motorstate);
   switch(motorspeed){
     case 0:
-      Serial.println("0");
+      //Serial.println("0");
       motor_speed1 = motor_speed1_normal;
       motor_speed2 = motor_speed2_normal;
       motor_speed3 = motor_speed3_normal;
       motor_speed4 = motor_speed4_normal;
       break;
     case 1:
-      Serial.println("1");
+      //Serial.println("1");
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
       motor_speed4 = motor_speed4_slow;
       break;
     case 2:
-      Serial.println("2");
+      //Serial.println("2");
       motor_speed1 = motor_speed1_fast;
       motor_speed2 = motor_speed2_fast;
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
       break;
     default:
-      Serial.println("default");
+      //Serial.println("default");
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
@@ -178,7 +256,6 @@ int decodeSignalsFromBrain(){
       coastStopAll();
       break;
   }
-  return motorspeed;
 }
 
 void findFreqMotorControl(){
@@ -203,36 +280,9 @@ void freqCountMotorSpeedControl(){
 //  Serial.println(pwm_value_motor_speed);
 }
 
-void printTapeDate() {
-  if (TMRArd_IsTimerExpired(TIMER_0)){
-      Serial.print("Sensor One: ");
-      Serial.println(digitalRead(SENSOR_1));
-      
-      Serial.print("Sensor Two: ");
-      Serial.println(digitalRead(SENSOR_2));
-      
-      Serial.print("Sensor Three: ");
-      Serial.println(digitalRead(SENSOR_3));
-      
-      Serial.print("Sensor Four: ");
-      Serial.println(digitalRead(SENSOR_4));
-
-      Serial.print("Sensor Five: ");
-      Serial.println(digitalRead(SENSOR_5));
-      
-      TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
-  }
-}
-
 void SetupPins() {  
   pinMode(MotorControlPin, INPUT);
   pinMode(MotorSpeedControlPin, INPUT);
-  
-  pinMode(SENSOR_1, INPUT);
-  pinMode(SENSOR_2, INPUT);
-  pinMode(SENSOR_3, INPUT);
-  pinMode(SENSOR_4, INPUT);
-  pinMode(SENSOR_5, INPUT);
   
   pinMode(WHEEL_ONE_ENABLE, OUTPUT);
   pinMode(WHEEL_TWO_ENABLE, OUTPUT);
@@ -402,3 +452,39 @@ void serialEvent(){
     }
   }
 }
+
+void communicateGyroInfo(){
+  if(cpt > 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_NEGATIVE);
+  } else if(cpt < 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_POSITIVE);
+  }
+}
+
+//Gyro Functions
+void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.endTransmission();
+  
+  // Read Nbytes
+  Wire.requestFrom(Address, Nbytes); 
+  uint8_t index=0;
+  while (Wire.available())
+    Data[index++]=Wire.read();
+}
+
+
+// Write a byte (Data) in device (Address) at register (Register)
+void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
+{
+  // Set register address
+  Wire.beginTransmission(Address);
+  Wire.write(Register);
+  Wire.write(Data);
+  Wire.endTransmission();
+}
+
+
