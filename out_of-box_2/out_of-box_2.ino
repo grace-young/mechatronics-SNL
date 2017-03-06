@@ -16,12 +16,16 @@
 #define TIME_INTERVAL      500
 #define JIGGLE_INTERVAL    400
 #define TIME_INTERVAL_2    1000
+#define TIME_BETWEEN_LINE_TAPE_READS  250
 
 #define TIMER_0            0
 
 #define COMM_MOTOR_NORMAL  50
 #define COMM_MOTOR_SLOW    100
 #define COMM_MOTOR_FAST    200
+// add the comm to reset gyro at some way
+//#define COMM_MOTOR_RESET_GYRO  180
+
 
 #define COMM_MOTOR_COAST_STOP 20
 #define COMM_MOTOR_FORWARD 40
@@ -45,6 +49,7 @@ volatile int pwm_value_comms = 0;
 
 static unsigned long fake_timer;
 
+static int numLinesCounted = 0;
 
 /*STATE_ON_CROSS_LINE_A_B_C_D_E, STATE_BOTTOM_T_LINE_B_C_D_E, STATE_ON_HORZ_LINE_B_C_D,  
   STATE_NO_TAPE_DETECTED, STATE_ONLY_TAPE_E, STATE_ONLY_TAPE_D,
@@ -61,7 +66,8 @@ static unsigned long fake_timer;
 
 typedef enum {
   WAIT, START, ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
-  FOUND_T_LINE, AT_BACK_OF_BOX
+  FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, CROSSED_THREE_LINES,
+  PAUSE_AT_LINE
 } States_t;
 
 States_t state;
@@ -141,6 +147,18 @@ void CheckGlobalStates(void){
     case AT_BACK_OF_BOX:
       RespAtBackOfBox();
       break;
+    case CROSSED_ONE_LINE:
+      RespCountedOneLine();
+      break;
+    case CROSSED_TWO_LINES:
+      RespCountedTwoLines();
+      break;
+    case CROSSED_THREE_LINES:
+      RespCountedThreeLines();
+      break;
+    case PAUSE_AT_LINE:
+      RespPauseAtLine();
+      break;
     default:
       break;
   }
@@ -171,13 +189,76 @@ int decodeSignalFromComms(){
   return commsState;
 }
 
+void RespPauseAtLine(){
+  if(millis()-fake_timer > 1000){
+      // we have waited long enough
+      if(numLinesCounted == 2){
+         state = CROSSED_TWO_LINES;
+         fake_timer = millis(); 
+         makeMotorsMoveForward();
+      }
+      else if(numLinesCounted == 1){
+         state = CROSSED_ONE_LINE;
+         fake_timer = millis();         
+        makeMotorsMoveForward();
+      }
+      else if(numLinesCounted == 3){
+         state = CROSSED_THREE_LINES;
+         fake_timer = millis(); 
+         makeMotorsStop();
+      }
+   } 
+}
+
+void RespCountedOneLine(){
+   // keep going forward 
+   if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
+      // fake timer there to make sure that 
+     // we aren't reading the same line 
+     if(ReadTapeSensor_C()){
+       state = PAUSE_AT_LINE;
+       fake_timer = millis();
+       numLinesCounted = 2;
+       makeMotorsStop();
+     }
+   }
+}
+
+void RespCountedTwoLines(){
+   if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
+      // fake timer there to make sure that 
+     // we aren't reading the same line 
+     if(ReadTapeSensor_C()){
+       state = PAUSE_AT_LINE;
+       fake_timer = millis();
+       numLinesCounted = 2;
+       makeMotorsStop();
+     }
+   }
+}
+
+void RespCountedThreeLines(){
+  makeMotorsStop();
+  /*
+  if(millis() = fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
+      // fake timer there to make sure that 
+     // we aren't reading the same line 
+     // check if read line
+     if(ReadTapeSensor_C()){
+       state = PAUSE_AT_LINE;
+       fake_timer = millis();
+       numLinesCounted = 3;
+       makeMotorsStop();
+     }
+   }*/
+}
+
 void RespAtBackOfBox(){
     makeMotorsMoveForward();
-    if(millis() - fake_timer >= 1000){
-      makeMotorsStop();
-    }
     if (ReadTapeSensor_A()){
-      
+      state = CROSSED_ONE_LINE;
+      fake_timer = millis();
+      numLinesCounted = 1;
     }
 }
 

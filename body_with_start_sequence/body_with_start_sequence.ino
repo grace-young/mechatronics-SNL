@@ -62,10 +62,10 @@ static int motor_speed2_normal= 203;
 static int motor_speed3_normal= 165;  
 static int motor_speed4_normal= 173;
 
-static int motor_speed1_slow= 75; // this was 80
-static int motor_speed2_slow= 75;  
-static int motor_speed3_slow= 75;  
-static int motor_speed4_slow= 75;
+static int motor_speed1_slow= 65; // this was 80
+static int motor_speed2_slow= 65;  // then it was 75
+static int motor_speed3_slow= 65;  
+static int motor_speed4_slow= 65; // might have to do fancy rev thing
 
 
 volatile int pwm_value_motor_control = 0;
@@ -108,7 +108,6 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 
 void loop() {
   decodeSignalsFromBrain();
-//  updateMotorSpeeds();
   communicateGyroInfo();
   
 ////////////GYRO
@@ -233,20 +232,20 @@ void decodeSignalsFromBrain(){
       coastStopAll();
       break;
     case 1:
-      goForwardCrossDir();
-      //goForwardOmniDir();
+      //goForwardCrossDir();
+      goForwardOmniDir();
       break;
     case 2:
-      goBackwardsCrossDir();
-      //goBackwardsOmniDir();
+      //goBackwardsCrossDir();
+      goBackwardsOmniDir();
       break;
     case 3:
-      goLeftCrossDir();
-      //goLeftOmniDir();
+      //goLeftCrossDir();
+      goLeftOmniDir();
       break;
     case 4:
-      goRightCrossDir();
-      //goRightOmniDir();
+      //goRightCrossDir();
+      goRightOmniDir();
       break;
     case 5:
       rotateCounterClockwise();
