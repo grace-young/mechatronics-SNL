@@ -62,15 +62,16 @@ void setup() {
 
 
 void loop() {
-  makeMotorsSlow();
-  UpdateTapeSensorVars();
-  
-  CheckGlobalStates();
-  if(TMRArd_IsTimerExpired(TIMER_0)){
-    String toprint = "state: " + (String)state + "\nA: " + (String)isTapeOn_A + " B:"+(String)isTapeOn_B + " C:" + (String)isTapeOn_C + " D:" + (String)isTapeOn_D + " E:" + (String)isTapeOn_E;
-    Serial.println(toprint);
-    TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
-  }
+  analogWrite(PIN_OUTPUT_SPEED_CONTROL, 20);
+//  makeMotorsSlow();
+//  UpdateTapeSensorVars();
+//  
+//  CheckGlobalStates();
+//  if(TMRArd_IsTimerExpired(TIMER_0)){
+//    String toprint = "state: " + (String)state + "\nA: " + (String)isTapeOn_A + " B:"+(String)isTapeOn_B + " C:" + (String)isTapeOn_C + " D:" + (String)isTapeOn_D + " E:" + (String)isTapeOn_E;
+//    Serial.println(toprint);
+//    TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
+//  }
 }
 
 void CheckGlobalStates(void){

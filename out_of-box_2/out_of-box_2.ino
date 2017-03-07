@@ -98,6 +98,16 @@ void loop() {
   //makeMotorsSlow();
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, 40);
+  Serial.println("before delay");
+  delay(1000);
+  Serial.println("after delay");
+  while(digitalRead(SENSOR_E)){
+    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, 60);
+    Serial.println("backwards");
+  }
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, 160);
+  delay(1000000);
   CheckGlobalStates();
   //Serial.println(state);
   if(TMRArd_IsTimerExpired(TIMER_0)){

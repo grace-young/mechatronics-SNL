@@ -108,6 +108,13 @@ void setup() {
 
 void loop() {
   decodeSignalsFromBrain();
+ // rotateClockwise();
+//  goForwardOmniDir();
+//  delay(1000);
+//  stopAndReturn();
+//  delay(1000);
+//  stopAllWheels();
+//  delay(100000);
   updateMotorSpeeds();
   communicateGyroInfo();
   
@@ -138,17 +145,18 @@ void loop() {
 //  Serial.print("az ");
 //  Serial.print(az,DEC);
 //  Serial.print(" ");
-  Serial.print ("x ");
-  Serial.print (gx,DEC); 
-  Serial.print ("\t");
-  Serial.print ("y ");
-  Serial.print (gy,DEC);
-  Serial.print ("\t");
-  Serial.println("z ");
-  Serial.println(gz,DEC);  
-  Serial.print ("\t");
-  Serial.print (prevZ);
-  Serial.print("   ");
+//  Serial.print ("x ");
+//  Serial.print (gx,DEC); 
+//  Serial.print ("\t");
+//  Serial.print ("y ");
+//  Serial.print (gy,DEC);
+//  Serial.print ("\t");
+  Serial.print("z ");
+  Serial.print(gz,DEC);  
+//  Serial.print ("\t");
+//  Serial.print (prevZ);
+//  Serial.print("   ");
+  Serial. print(" ");
   Serial.println(orientation);
   flag = false;
   if ( (abs(gx) > 600 || abs(gy) > 600)) {
@@ -187,15 +195,18 @@ void updateMotorSpeeds(){
 
 void decodeSignalsFromBrain(){
   int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
-  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 3);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 11);
 
-
+  //20 - normal
+  //40 - slow 
+  //60 - fast 
+  //80 - clear gyro 
+  
   // 0-640 --> 0
   // 640-1280 --> 1
   // 510-765 --> 2
-  // UNCLEAR IF THIS WORKS OR NOT
-  Serial.println(pwm_value_motor_control);
-  Serial.println(motorstate);
+  //Serial.println(pwm_value_motor_speed);
+  //Serial.println(motorspeed);
   switch(motorspeed){
     case 0:
       //Serial.println("0");
@@ -218,6 +229,9 @@ void decodeSignalsFromBrain(){
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
       break;
+    case 3:
+      orientation = 0;
+      break;
     default:
       //Serial.println("default");
       motor_speed1 = motor_speed1_slow;
@@ -235,7 +249,7 @@ void decodeSignalsFromBrain(){
       goForwardOmniDir();
       break;
     case 2:
-      goBackwardsOmniDir();
+      stopAndReturn();
       break;
     case 3:
       goLeftOmniDir();
@@ -476,6 +490,25 @@ void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)
     Data[index++]=Wire.read();
 }
 
+bool reved = false;
+
+void stopAndReturn(){
+  if(!reved){
+   analogWrite(WHEEL_ONE_ENABLE, 80);
+   analogWrite(WHEEL_ONE_ENABLE, 80);
+   analogWrite(WHEEL_ONE_ENABLE, 80);
+   analogWrite(WHEEL_ONE_ENABLE, 80);
+  goBackwardsOmniDir();
+  delay(100);
+  }
+  else{
+  analogWrite(WHEEL_ONE_ENABLE, 40);
+  analogWrite(WHEEL_ONE_ENABLE, 40);
+  analogWrite(WHEEL_ONE_ENABLE, 40);
+  analogWrite(WHEEL_ONE_ENABLE, 40);
+  }
+  reved = true; 
+}
 
 // Write a byte (Data) in device (Address) at register (Register)
 void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
