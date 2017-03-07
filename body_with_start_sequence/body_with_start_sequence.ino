@@ -198,7 +198,7 @@ void decodeSignalsFromBrain(){
   // 80 --> 3 clear gyro
   // UNCLEAR IF THIS WORKS OR NOT
 //  Serial.println(pwm_value_motor_control);
-//  Serial.println(motorstate);
+  Serial.println(motorstate);
   switch(motorspeed){
     case 0:
       //Serial.println("0");
