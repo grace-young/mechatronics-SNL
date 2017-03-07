@@ -60,6 +60,7 @@ void loop() {
 void turnLeftSide(int speed){
   analogWrite(WHEEL_TWO_ENABLE, abs(speed));
   if (speed>=0){
+    // turns right
     digitalWrite(WHEEL_TWO_R, LOW);
     digitalWrite(WHEEL_TWO_L, HIGH);
   } else {
