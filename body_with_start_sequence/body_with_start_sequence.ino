@@ -338,12 +338,25 @@ void coastStopWheelFour(){
     digitalWrite(WHEEL_FOUR_ENABLE, LOW);
 }
 
+/* =====================================
+ *  Drive forward and backward using cross
+ * ===================================== */
+
 void goForwardCrossDir(){
-    turnWheelOneCounterClockwise();
-    turnWheelThreeClockwise();
-    coastStopWheelTwo();
-    coastStopWheelFour();
+    turnWheelTwoCounterClockwise(); // this works
+    turnWheelFourClockwise();
+    coastStopWheelOne();
+    coastStopWheelThree();
 }
+
+void goBackwardsCrossDir(){
+    turnWheelTwoClockwise();
+    turnWheelFourCounterClockwise();
+    coastStopWheelOne();
+    coastStopWheelThree();
+}
+
+// OMNI
 
 void goForwardOmniDir(){
   turnWheelThreeCounterClockwise();
@@ -359,12 +372,6 @@ void goBackwardsOmniDir(){
   turnWheelOneCounterClockwise();
 }
 
-void goBackwardsCrossDir(){
-    turnWheelOneClockwise();
-    turnWheelThreeCounterClockwise();
-    coastStopWheelTwo();
-    coastStopWheelFour();
-}
 
 void goRightOmniDir(){
   turnWheelThreeCounterClockwise();
@@ -373,14 +380,28 @@ void goRightOmniDir(){
   turnWheelOneClockwise();
 }
 
+/* =====================================
+ *  Drive right and left using cross
+ * ===================================== */
+ 
 void goRightCrossDir(){
   // wheel 2 --> clockwise
-  turnWheelTwoClockwise();
+  turnWheelOneClockwise();
   //wheel 4 --> counterclockwise
-  turnWheelFourCounterClockwise();
-  coastStopWheelOne();
-  coastStopWheelThree();
+  turnWheelThreeCounterClockwise();
+  coastStopWheelTwo();
+  coastStopWheelFour();
 }
+
+void goLeftCrossDir(){
+  // wheel 2 --> clockwise
+  turnWheelOneCounterClockwise();
+  //wheel 4 --> counterclockwise
+  turnWheelThreeClockwise();
+  coastStopWheelTwo();
+  coastStopWheelFour();
+}
+
 
 void goLeftOmniDir(){
   turnWheelThreeClockwise();
@@ -389,25 +410,16 @@ void goLeftOmniDir(){
   turnWheelOneCounterClockwise();
 }
 
-void goLeftCrossDir(){
-  // wheel 2 --> clockwise
-  turnWheelTwoCounterClockwise();
-  //wheel 4 --> counterclockwise
-  turnWheelFourClockwise();
-  coastStopWheelOne();
-  coastStopWheelThree();
-}
-
 void rotateClockwise() {
-  turnWheelFourCounterClockwise();
-  turnWheelTwoCounterClockwise();
+  turnWheelFourClockwise();
+  turnWheelTwoClockwise();
   turnWheelThreeCounterClockwise();
   turnWheelOneCounterClockwise();
 }
 
 void rotateCounterClockwise() {
-  turnWheelFourClockwise();
-  turnWheelTwoClockwise();
+ turnWheelFourCounterClockwise();
+  turnWheelTwoCounterClockwise();
   turnWheelThreeClockwise();
   turnWheelOneClockwise();
 }
