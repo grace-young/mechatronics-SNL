@@ -1,10 +1,15 @@
 #include <Timers.h>
 
-#define SENSOR_A 7
-#define SENSOR_B 6
-#define SENSOR_C 4
-#define SENSOR_D 8
-#define SENSOR_E 5
+#define PIN_SENSOR_A 7
+#define PIN_SENSOR_B_1 6
+#define PIN_SENSOR_C 4
+#define PIN_SENSOR_D_1 8
+#define PIN_SENSOR_E 5
+
+// need pins for these:
+#define PIN_SENSOR_B_2 NUMBER GOES HERE
+#define PIN_SENSOR_B_2 NUMBER GOES HERE
+
 
 #define PIN_COMMS_IN_GYRO        2
 #define PIN_OUTPUT_MOTOR_CONTROL 3
@@ -38,11 +43,6 @@
 #define COMM_MOTOR_STOP 160
 
 
-
-#define slow 80
-#define normal 160
-#define fast 240
-
 static bool startGyroNegative = false;
 
 volatile int prev_time_comms = 0;
@@ -52,22 +52,9 @@ static unsigned long fake_timer;
 
 static int numLinesCounted = 0;
 
-/*STATE_ON_CROSS_LINE_A_B_C_D_E, STATE_BOTTOM_T_LINE_B_C_D_E, STATE_ON_HORZ_LINE_B_C_D,  
-  STATE_NO_TAPE_DETECTED, STATE_ONLY_TAPE_E, STATE_ONLY_TAPE_D,
-  STATE_BACK_RIGHT_ON_LINE_D_E, STATE_ONLY_TAPE_C, STATE_BACK_CENTER_LINE_C_E,   
-  STATE_CENTER_RIGHT_C_D, STATE_BACK_RIGHT_CORNER_C_E_D, STATE_ONLY_TAPE_B,   
-  STATE_BACK_RIGHT_ON_LINE_B_E, STATE_COULD_BE_ON_CORNER_B_D,   
-  STATE_ONLY_TAPE_B_D_E, STATE_CENTER_LEFT_B_C, STATE_BACK_LEFT_CORNER_B_C_E,  
-  STATE_ONLY_TAPE_A, STATE_COULD_BE_ON_CORNER_A_E, STATE_TOP_RIGHT_CORNER_A_D,   
-  STATE_ONLY_TAPE_A_D_E, STATE_TOP_CENTER_LINE_A_C, STATE_TOP_CENTER_LINE_A_C_E, 
-  STATE_TOP_RIGHT_CORNER_A_C_D, STATE_RIGHT_SIDE_A_C_D_E, STATE_TOP_LEFT_DIAG_A_B,   
-  STATE_LEFT_SIDE_A_B_E, STATE_TOP_SIDE_A_B_D, STATE_ALL_BUT_CENTER_A_B_D_E,   
-  STATE_TOP_LEFT_CORNER_A_B_C, STATE_LEFT_SIDE_A_B_C_E, STATE_TOP_T_LINE_A_B_C_D
- */
-
 typedef enum {
-  WAIT, START, ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, 
-  LEFT_END_OF_LINE, FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
+  WAIT, START, ORIENTATION_STRAIGHT,
+  FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
   CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, DONE
 } States_t;
 
@@ -106,7 +93,6 @@ void setup() {
 
 void loop() {
   makeMotorsFast();
-  //makeMotorsSlow();
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
@@ -116,9 +102,6 @@ void loop() {
     //Serial.println(state);
     TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   }
-  //if(goingFirstShootSpot){
-  //  goToFirstShootingSpot();
-  //}
 }
 
 void CheckGlobalStates(void){
@@ -133,18 +116,6 @@ void CheckGlobalStates(void){
       break;
     case ORIENTATION_STRAIGHT:
       RespOrientationStraight();
-      break;
-    case LOOKING_FOR_TAPE:
-      RespStateLookingForTape();
-      break;
-    case FOUND_HORZ_LINE:
-      RespFoundHorzLine();
-      break;
-    case RIGHT_END_OF_LINE:
-      RespRightEndLine();
-      break;
-    case LEFT_END_OF_LINE:
-      RespLeftEndLine();
       break;
     case FOUND_T_LINE:
       RespFoundTLine();
@@ -371,58 +342,112 @@ void RespRightEndLine(){
   }
 }
 
-void RespStateLookingForTape(){
-  if(isTapeOn_A && isTapeOn_B && isTapeOn_C && isTapeOn_D){
-    // FOUND A T
-    makeMotorsStop();
-    state = FOUND_T_LINE;
-  }
-  else if (isTapeOn_B && isTapeOn_C && isTapeOn_D){
-    // NOW ON A HORZ LINE
-    makeMotorsMoveRight();
-    state = FOUND_HORZ_LINE;
-  }
-}
 
-void RespFoundHorzLine(){
-  // right now this is assuming it's aligned exactly straight to tape
-  // so need to fix edge cases later   
-  if(isTapeOn_A && isTapeOn_B && isTapeOn_C && isTapeOn_D){
-    makeMotorsMoveForward();
-    state = FOUND_T_LINE;
-  } else if(isTapeOn_B && isTapeOn_C){
-    makeMotorsMoveLeft();
-    state = RIGHT_END_OF_LINE;
-  } else if(isTapeOn_C && isTapeOn_D){
-    makeMotorsMoveRight();
-    state = LEFT_END_OF_LINE;
-  }
-}
+/* ====================================================================
+ *  ReadTapeSensor functions
+ * ====================================================================
+ */
 
 bool ReadTapeSensor_A(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(SENSOR_A);
+    return !digitalRead(PIN_SENSOR_A);
 }
 
-bool ReadTapeSensor_B(void){
+bool ReadTapeSensor_B_1(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(SENSOR_B);
+    return !digitalRead(PIN_SENSOR_B_1);
+}
+
+bool ReadTapeSensor_B_2(void){
+    // 1 if read tape, 0 if not 
+    return !digitalRead(PIN_SENSOR_B_2);
 }
 
 bool ReadTapeSensor_C(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(SENSOR_C);
+    return !digitalRead(PIN_SENSOR_C);
 }
 
-bool ReadTapeSensor_D(void){
+bool ReadTapeSensor_D_1(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(SENSOR_D);
+    return !digitalRead(PIN_SENSOR_D_1);
+}
+
+bool ReadTapeSensor_D_2(void){
+    // 1 if read tape, 0 if not 
+    return !digitalRead(PIN_SENSOR_D_2);
 }
 
 bool ReadTapeSensor_E(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(SENSOR_E);
+    return !digitalRead(PIN_SENSOR_E);
 }
+
+/* ====================================================================
+ *  helper functions to communicate with motor arduino
+ * ====================================================================
+ */
+
+void makeMotorsMoveForward(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_FORWARD);
+}
+
+void makeMotorsMoveBackward(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_BACKWARD);
+}
+ 
+void makeMotorsSlow(){
+  analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW); 
+}
+
+void makeMotorsFast(){
+  analogWrite(PIN_OUTPUT_SPEED_CONTROL,COMM_MOTOR_FAST);
+}
+
+void makeMotorsStop(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_STOP);
+}
+
+void makeMotorsSpinCL(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+}
+
+void makeMotorsSpinCC(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+}
+
+void makeMotorsMoveRight(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_RIGHT);
+}
+
+void makeMotorsMoveLeft(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_LEFT);
+}
+
+/* ====================================================================
+ *  SETUP PINS function
+ * ====================================================================
+ */
+
+void SetupPins(){
+  pinMode(PIN_SENSOR_A, INPUT);
+  pinMode(PIN_SENSOR_B_1, INPUT);
+  pinMode(PIN_SENSOR_B_2, INPUT);
+  pinMode(PIN_SENSOR_C, INPUT);
+  pinMode(PIN_SENSOR_D_1, INPUT);
+  pinMode(PIN_SENSOR_D_2, INPUT);
+  pinMode(PIN_SENSOR_E, INPUT);
+  pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
+  pinMode(PIN_OUTPUT_SPEED_CONTROL, OUTPUT);
+  pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
+  pinMode(PIN_GAME_START, INPUT_PULLUP);
+}
+
+/* ====================================================================
+ *  UpdateTapeSensorVars function
+ *      updates the tape sensor globals
+ * ====================================================================
+ */
 
 void UpdateTapeSensorVars(void){
    // Change state based on tape sensors
@@ -796,216 +821,4 @@ void UpdateTapeSensorVars(void){
       // 30
    }     
 }
-/*
-void RespToStates(void){
-  if(TMRArd_IsTimerExpired(TIMER_0)){
-    Serial.println(ReadTapeSensor_A());
-    Serial.println(ReadTapeSensor_B());
-    Serial.println(ReadTapeSensor_C());
-    Serial.println(ReadTapeSensor_D());
-    Serial.println(ReadTapeSensor_E());
-    switch(state){
-      case STATE_ON_CROSS_LINE_A_B_C_D_E:  
-        Serial.println("STATE_ON_CROSS_LINE_A_B_C_D_E");
-        break;
-      case STATE_BOTTOM_T_LINE_B_C_D_E:
-        Serial.println("STATE_BOTTOM_T_LINE_B_C_D_E");
-        break;
-      case STATE_ON_HORZ_LINE_B_C_D:
-        Serial.println("STATE_ON_HORZ_LINE_B_C_D");
-        break;
-      case STATE_NO_TAPE_DETECTED:
-        Serial.println("STATE_NO_TAPE_DETECTED");
-        break;
-      case STATE_ONLY_TAPE_E:
-        Serial.println("STATE_ONLY_TAPE_E");
-        break;
-      case STATE_ONLY_TAPE_D:   
-        Serial.println("STATE_ONLY_TAPE_D");
-        break;
-      case STATE_BACK_RIGHT_ON_LINE_D_E:   
-        Serial.println("STATE_BACK_RIGHT_ON_LINE_D_E");
-        break;      
-      case STATE_ONLY_TAPE_C:   
-        Serial.println("STATE_ONLY_TAPE_C");
-        break;            
-      case STATE_BACK_CENTER_LINE_C_E:   
-        Serial.println("STATE_BACK_CENTER_LINE_C_E");
-        break;                  
-      case STATE_CENTER_RIGHT_C_D:   
-        Serial.println("STATE_CENTER_RIGHT_C_D");
-        break;                       
-      case STATE_BACK_RIGHT_CORNER_C_E_D:   
-        Serial.println("STATE_BACK_RIGHT_CORNER_C_E_D");
-        break;                       
-      case STATE_ONLY_TAPE_B:   
-        Serial.println("STATE_ONLY_TAPE_B");
-        break;                      
-      case STATE_BACK_RIGHT_ON_LINE_B_E:   
-        Serial.println("STATE_BACK_RIGHT_ON_LINE_B_E");
-        break;      
-      case STATE_COULD_BE_ON_CORNER_B_D:   
-        Serial.println("STATE_COULD_BE_ON_CORNER_B_D");
-        break;      
-      case STATE_ONLY_TAPE_B_D_E:   
-        Serial.println("STATE_ONLY_TAPE_B_D_E");
-        break;      
-      case STATE_CENTER_LEFT_B_C:   
-        Serial.println("STATE_CENTER_LEFT_B_C");
-        break;            
-      case STATE_BACK_LEFT_CORNER_B_C_E:   
-        Serial.println("STATE_BACK_LEFT_CORNER_B_C_E");
-        break;                  
-      case STATE_ONLY_TAPE_A:   
-        Serial.println("STATE_ONLY_TAPE_A");
-        break;                        
-      case STATE_COULD_BE_ON_CORNER_A_E:   
-        Serial.println("STATE_COULD_BE_ON_CORNER_A_E");
-        break;                          
-      case STATE_TOP_RIGHT_CORNER_A_D:   
-        Serial.println("STATE_TOP_RIGHT_CORNER_A_D");
-        break;                                
-      case STATE_ONLY_TAPE_A_D_E:   
-        Serial.println("STATE_ONLY_TAPE_A_D_E");
-        break;                                
-      case STATE_TOP_CENTER_LINE_A_C:   
-        Serial.println("STATE_TOP_CENTER_LINE_A_C");
-        break;                                      
-      case STATE_TOP_CENTER_LINE_A_C_E:   
-        Serial.println("STATE_TOP_CENTER_LINE_A_C_E");
-        break;                                            
-      case STATE_TOP_RIGHT_CORNER_A_C_D:   
-        Serial.println("STATE_TOP_RIGHT_CORNER_A_C_D");
-        break;                                                  
-      case STATE_RIGHT_SIDE_A_C_D_E:   
-        Serial.println("STATE_RIGHT_SIDE_A_C_D_E");
-        break;                                                  
-      case STATE_TOP_LEFT_DIAG_A_B:   
-        Serial.println("STATE_TOP_LEFT_DIAG_A_B");
-        break;                                                        
-      case STATE_LEFT_SIDE_A_B_E:   
-        Serial.println("STATE_LEFT_SIDE_A_B_E");
-        break;                                                              
-      case STATE_TOP_SIDE_A_B_D:   
-        Serial.println("STATE_TOP_SIDE_A_B_D");
-        break;                                                                    
-      case STATE_ALL_BUT_CENTER_A_B_D_E:   
-        Serial.println("STATE_ALL_BUT_CENTER_A_B_D_E");
-        break;                           
-      case STATE_TOP_LEFT_CORNER_A_B_C:   
-        Serial.println("STATE_TOP_LEFT_CORNER_A_B_C");
-        break; 
-      case STATE_LEFT_SIDE_A_B_C_E:   
-        Serial.println("STATE_LEFT_SIDE_A_B_C_E");
-        break;       
-      case STATE_TOP_T_LINE_A_B_C_D:   
-        Serial.println("STATE_TOP_T_LINE_A_B_C_D");
-        break;       
-    }
-    TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
-  }
-}
 
-*/
-
-/* ====================================================================
- *  helper functions to communicate with motor arduino
- * ====================================================================
- */
-
-void makeMotorsMoveForward(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_FORWARD);
-}
-
-void makeMotorsMoveBackward(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_BACKWARD);
-}
- 
-void makeMotorsSlow(){
-  analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW); 
-}
-
-void makeMotorsFast(){
-  analogWrite(PIN_OUTPUT_SPEED_CONTROL,COMM_MOTOR_FAST);
-}
-
-void makeMotorsStop(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_STOP);
-}
-
-void makeMotorsSpinCL(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
-}
-
-void makeMotorsSpinCC(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
-}
-
-void makeMotorsMoveRight(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_RIGHT);
-}
-
-void makeMotorsMoveLeft(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_LEFT);
-}
-
-void SetupPins(){
-  pinMode(SENSOR_A, INPUT);
-  pinMode(SENSOR_B, INPUT);
-  pinMode(SENSOR_C, INPUT);
-  pinMode(SENSOR_D, INPUT);
-  pinMode(SENSOR_E, INPUT);
-  pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
-  pinMode(PIN_OUTPUT_SPEED_CONTROL, OUTPUT);
-  pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
-  pinMode(PIN_GAME_START, INPUT_PULLUP);
-}
-
-/*
-void goToFirstShootingSpot(){
-  switch (stateNumber) {
-    case FWD_SAFE_SPACE:
-         if (digitalRead(SENSOR_C)) {
-            analogWrite(motorStateOut, forward);
-         } else {
-            stateNumber = ALIGN_SAFE_SPACE;
-            TMRArd_InitTimer(TIMER_0, JIGGLE_INTERVAL); 
-         }
-         break;
-    case ALIGN_SAFE_SPACE:
-         if (digitalRead(SENSOR_B)) {
-            
-         }
-         break:
-    case MOVE_ON_LINE:
-
-         break:
-    default:
-
-         break:
-  }
-  
-//  if(!Cseen1){
-//    analogWrite(motorStateOut, forward);
-//    if(digitalRead(SENSOR_C)){
-//      Cseen1  = true;
-//      TMRArd_InitTimer(TIMER_0, JIGGLE_INTERVAL); 
-//    }
-//  } else if (!TMRArd_IsTimerExpired(TIMER_0) && !Bseen1 && !Eseen1){
-//    analogWrite(motorStateOut, spinCC);
-//      if(digitalRead(SENSOR_B)){
-//        Bseen1 = true;
-//      }
-//      if(digitalRead(SENSOR_E)){
-//        Eseen1 = true; 
-//      }
-//    }
-//  else if(!Bseen1 && !Eseen1){
-//    analogWrite(motorStateOut, spinCl);
-//    if(digitalRead(SENSOR_D)){
-//      
-//    }
-//  }
-  
-}
-*/
