@@ -18,6 +18,7 @@
 #define TIME_INTERVAL_2    1000
 #define TIME_BETWEEN_LINE_TAPE_READS  250
 
+
 #define TIMER_0            0
 
 #define COMM_MOTOR_NORMAL  50
@@ -65,9 +66,9 @@ static int numLinesCounted = 0;
  */
 
 typedef enum {
-  WAIT, START, ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, LEFT_END_OF_LINE,
-  FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, CROSSED_THREE_LINES,
-  PAUSE_AT_LINE
+  WAIT, START, ORIENTATION_STRAIGHT, LOOKING_FOR_TAPE, FOUND_HORZ_LINE, RIGHT_END_OF_LINE, 
+  LEFT_END_OF_LINE, FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
+  CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, DONE
 } States_t;
 
 States_t state;
@@ -76,6 +77,8 @@ unsigned char isTapeOn_B;
 unsigned char isTapeOn_C;
 unsigned char isTapeOn_D;
 unsigned char isTapeOn_E;
+
+static bool alignLeft;
 
 void setup() {
   Serial.begin(19200);
@@ -90,6 +93,8 @@ void setup() {
   makeMotorsMoveForward();
 
   SetupPins();
+  
+  alignLeft=true;
   
   TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
 
@@ -159,6 +164,10 @@ void CheckGlobalStates(void){
     case PAUSE_AT_LINE:
       RespPauseAtLine();
       break;
+    case ALIGN_TO_SHOOT:
+      RespAlignToShoot();
+    case DONE:
+      RespDone();
     default:
       break;
   }
@@ -210,13 +219,57 @@ void RespPauseAtLine(){
    } 
 }
 
+void RespDone(){
+   makeMotorsStop(); 
+}
+
+void RespAlignToShoot(){
+  // if we read b, c, & d, we are good
+  if(ReadTapeSensor_B() && ReadTapeSensor_C() && ReadTapeSensor_D()){
+     // WE CAN SHOOT
+    Serial.println("GOING TO DONE");
+    state = DONE;
+    makeMotorsStop(); 
+  }
+  else if(ReadTapeSensor_C() && ReadTapeSensor_B() && !ReadTapeSensor_D()){
+    Serial.println("read C & B & not D");
+  } 
+  else if (ReadTapeSensor_C() && !ReadTapeSensor_B() && ReadTapeSensor_D()){
+    Serial.println("read C & D & not B");
+  }else if(ReadTapeSensor_C() && !ReadTapeSensor_B() && !ReadTapeSensor_D){
+     // NOT ALIGNED
+     if(alignLeft){
+        // trying to turn counter clockwise
+        makeMotorsSpinCC();        
+        Serial.println("spinning counter clockwise");
+        if (millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
+          // turn the other way
+          Serial.println("tried to align left");
+          alignLeft = false;
+          fake_timer = millis();
+        } 
+     } else {
+        makeMotorsSpinCL();
+        Serial.println("spinning clockwise");
+        if (millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
+          // turn the other way
+          // WE ARE FUCKED IF STILL CAN'T FIND
+          alignLeft = true;
+          fake_timer = millis();
+          Serial.println("FUCKED");
+        } 
+     }
+  }
+  
+}
+
 void RespCountedOneLine(){
    // keep going forward 
    if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
      // we aren't reading the same line 
      if(ReadTapeSensor_C()){
-       state = PAUSE_AT_LINE;
+       state = ALIGN_TO_SHOOT;
        fake_timer = millis();
        numLinesCounted = 2;
        makeMotorsStop();
@@ -255,7 +308,7 @@ void RespCountedThreeLines(){
 
 void RespAtBackOfBox(){
     makeMotorsMoveForward();
-    if (ReadTapeSensor_A()){
+    if (ReadTapeSensor_C()){
       state = CROSSED_ONE_LINE;
       fake_timer = millis();
       numLinesCounted = 1;
@@ -275,6 +328,7 @@ void RespToWait(){
 }
 
 void RespToStart(){
+  
   analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW);
   if(startGyroNegative && (decodeSignalFromComms() == 0)){
     analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);

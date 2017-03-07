@@ -62,10 +62,10 @@ static int motor_speed2_normal= 203;
 static int motor_speed3_normal= 165;  
 static int motor_speed4_normal= 173;
 
-static int motor_speed1_slow= 70; // this was 80
-static int motor_speed2_slow= 70;  
-static int motor_speed3_slow= 70;  
-static int motor_speed4_slow= 70;
+static int motor_speed1_slow= 65; // this was 80
+static int motor_speed2_slow= 65;  // then it was 75
+static int motor_speed3_slow= 65;  
+static int motor_speed4_slow= 65; // might have to do fancy rev thing
 
 
 volatile int pwm_value_motor_control = 0;
@@ -84,12 +84,12 @@ bool statedPositive;
 //Gyro variables end
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Wire.begin();
 
   //Gyro Configuration
   // Configure gyroscope range
-  I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
+I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
   // Configure accelerometers range
   I2CwriteByte(MPU9250_ADDRESS,28,ACC_FULL_SCALE_16_G);
   
@@ -108,7 +108,6 @@ void setup() {
 
 void loop() {
   decodeSignalsFromBrain();
-  updateMotorSpeeds();
   communicateGyroInfo();
   
 ////////////GYRO
@@ -138,17 +137,18 @@ void loop() {
 //  Serial.print("az ");
 //  Serial.print(az,DEC);
 //  Serial.print(" ");
-  Serial.print ("x ");
-  Serial.print (gx,DEC); 
-  Serial.print ("\t");
-  Serial.print ("y ");
-  Serial.print (gy,DEC);
-  Serial.print ("\t");
-  Serial.println("z ");
-  Serial.println(gz,DEC);  
-  Serial.print ("\t");
-  Serial.print (prevZ);
-  Serial.print("   ");
+//  Serial.print ("x ");
+//  Serial.print (gx,DEC); 
+//  Serial.print ("\t");
+//  Serial.print ("y ");
+//  Serial.print (gy,DEC);
+//  Serial.print ("\t");
+//  Serial.println("z ");
+//  Serial.println(gz,DEC);  
+//  Serial.print ("\t");
+//  Serial.print (prevZ);
+//  Serial.print("   ");
+  // 100 was nice 
   Serial.println(orientation);
   flag = false;
   if ( (abs(gx) > 600 || abs(gy) > 600)) {
@@ -194,8 +194,8 @@ void decodeSignalsFromBrain(){
   // 640-1280 --> 1
   // 510-765 --> 2
   // UNCLEAR IF THIS WORKS OR NOT
-  Serial.println(pwm_value_motor_control);
-  Serial.println(motorstate);
+//  Serial.println(pwm_value_motor_control);
+//  Serial.println(motorstate);
   switch(motorspeed){
     case 0:
       //Serial.println("0");
@@ -232,15 +232,19 @@ void decodeSignalsFromBrain(){
       coastStopAll();
       break;
     case 1:
+      //goForwardCrossDir();
       goForwardOmniDir();
       break;
     case 2:
+      //goBackwardsCrossDir();
       goBackwardsOmniDir();
       break;
     case 3:
+      //goLeftCrossDir();
       goLeftOmniDir();
       break;
     case 4:
+      //goRightCrossDir();
       goRightOmniDir();
       break;
     case 5:
@@ -309,6 +313,31 @@ void coastStopAll(){
   digitalWrite(WHEEL_FOUR_ENABLE, LOW);
 }
 
+void coastStopWheelOne(){
+    digitalWrite(WHEEL_ONE_ENABLE, LOW);
+}
+
+void coastStopWheelTwo(){
+    digitalWrite(WHEEL_TWO_ENABLE, LOW);
+}
+
+
+void coastStopWheelThree(){
+    digitalWrite(WHEEL_THREE_ENABLE, LOW);
+}
+
+
+void coastStopWheelFour(){
+    digitalWrite(WHEEL_FOUR_ENABLE, LOW);
+}
+
+void goForwardCrossDir(){
+    turnWheelOneCounterClockwise();
+    turnWheelThreeClockwise();
+    coastStopWheelTwo();
+    coastStopWheelFour();
+}
+
 void goForwardOmniDir(){
   turnWheelThreeCounterClockwise();
   turnWheelTwoClockwise();
@@ -323,6 +352,13 @@ void goBackwardsOmniDir(){
   turnWheelOneCounterClockwise();
 }
 
+void goBackwardsCrossDir(){
+    turnWheelOneClockwise();
+    turnWheelThreeCounterClockwise();
+    coastStopWheelTwo();
+    coastStopWheelFour();
+}
+
 void goRightOmniDir(){
   turnWheelThreeCounterClockwise();
   turnWheelTwoCounterClockwise();
@@ -330,11 +366,29 @@ void goRightOmniDir(){
   turnWheelOneClockwise();
 }
 
+void goRightCrossDir(){
+  // wheel 2 --> clockwise
+  turnWheelTwoClockwise();
+  //wheel 4 --> counterclockwise
+  turnWheelFourCounterClockwise();
+  coastStopWheelOne();
+  coastStopWheelThree();
+}
+
 void goLeftOmniDir(){
   turnWheelThreeClockwise();
   turnWheelTwoClockwise();
   turnWheelFourCounterClockwise();
   turnWheelOneCounterClockwise();
+}
+
+void goLeftCrossDir(){
+  // wheel 2 --> clockwise
+  turnWheelTwoCounterClockwise();
+  //wheel 4 --> counterclockwise
+  turnWheelFourClockwise();
+  coastStopWheelOne();
+  coastStopWheelThree();
 }
 
 void rotateClockwise() {
@@ -454,9 +508,9 @@ void serialEvent(){
 }
 
 void communicateGyroInfo(){
-  if(cpt > 0){
+  if(orientation >= 0){
     analogWrite(COMMS_OUT_TO_BRAIN,GYRO_NEGATIVE);
-  } else if(cpt < 0){
+  } else if(orientation < 0){
     analogWrite(COMMS_OUT_TO_BRAIN,GYRO_POSITIVE);
   }
 }
@@ -486,5 +540,3 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data)
   Wire.write(Data);
   Wire.endTransmission();
 }
-
-
