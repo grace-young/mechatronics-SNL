@@ -24,6 +24,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+    stopAllWheels();
 }
 
 
@@ -55,17 +56,17 @@ void serialEvent(){
  * ===================================== */
 
 void goForwardCrossDir(){
-    turnWheelOneCounterClockwise();
-    turnWheelThreeClockwise();
-    coastStopWheelTwo();
-    coastStopWheelFour();
+    turnWheelTwoCounterClockwise(); // this works
+    turnWheelFourClockwise();
+    coastStopWheelOne();
+    coastStopWheelThree();
 }
 
 void goBackwardsCrossDir(){
-    turnWheelOneClockwise();
-    turnWheelThreeCounterClockwise();
-    coastStopWheelTwo();
-    coastStopWheelFour();
+    turnWheelTwoClockwise();
+    turnWheelFourCounterClockwise();
+    coastStopWheelOne();
+    coastStopWheelThree();
 }
 
 /* =====================================
@@ -74,20 +75,20 @@ void goBackwardsCrossDir(){
  
 void goRightCrossDir(){
   // wheel 2 --> clockwise
-  turnWheelTwoClockwise();
+  turnWheelOneClockwise();
   //wheel 4 --> counterclockwise
-  turnWheelFourCounterClockwise();
-  coastStopWheelOne();
-  coastStopWheelThree();
+  turnWheelThreeCounterClockwise();
+  coastStopWheelTwo();
+  coastStopWheelFour();
 }
 
 void goLeftCrossDir(){
   // wheel 2 --> clockwise
-  turnWheelTwoCounterClockwise();
+  turnWheelOneCounterClockwise();
   //wheel 4 --> counterclockwise
-  turnWheelFourClockwise();
-  coastStopWheelOne();
-  coastStopWheelThree();
+  turnWheelThreeClockwise();
+  coastStopWheelTwo();
+  coastStopWheelFour();
 }
 
 /* =====================================
@@ -95,15 +96,15 @@ void goLeftCrossDir(){
  * ===================================== */
 
 void rotateClockwise() {
-  turnWheelFourCounterClockwise();
-  turnWheelTwoCounterClockwise();
+  turnWheelFourClockwise();
+  turnWheelTwoClockwise();
   turnWheelThreeCounterClockwise();
   turnWheelOneCounterClockwise();
 }
 
 void rotateCounterClockwise() {
-  turnWheelFourClockwise();
-  turnWheelTwoClockwise();
+  turnWheelFourCounterClockwise();
+  turnWheelTwoCounterClockwise();
   turnWheelThreeClockwise();
   turnWheelOneClockwise();
 }
@@ -113,13 +114,13 @@ void rotateCounterClockwise() {
  * ===================================== */
 
 void turnWheelOneClockwise(){
-  analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
+  analogWrite(WHEEL_ONE_ENABLE, 100);
   digitalWrite(WHEEL_ONE_R, HIGH);
   digitalWrite(WHEEL_ONE_L, LOW);
 }
 
 void turnWheelOneCounterClockwise(){
-  analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
+  analogWrite(WHEEL_ONE_ENABLE, 100);
   digitalWrite(WHEEL_ONE_R, LOW);
   digitalWrite(WHEEL_ONE_L, HIGH);
 }
@@ -129,13 +130,13 @@ void turnWheelOneCounterClockwise(){
  * ===================================== */
 
 void turnWheelTwoClockwise(){
-  analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
+  analogWrite(WHEEL_TWO_ENABLE, 200);
   digitalWrite(WHEEL_TWO_R, LOW);
   digitalWrite(WHEEL_TWO_L, HIGH);
 }
 
 void turnWheelTwoCounterClockwise(){
-  analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
+  analogWrite(WHEEL_TWO_ENABLE, 200);
   digitalWrite(WHEEL_TWO_R, HIGH);
   digitalWrite(WHEEL_TWO_L, LOW);
 }
@@ -145,13 +146,13 @@ void turnWheelTwoCounterClockwise(){
  * ===================================== */
 
 void turnWheelThreeClockwise(){
-  analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
+  analogWrite(WHEEL_THREE_ENABLE, 100);
   digitalWrite(WHEEL_THREE_R, LOW);
   digitalWrite(WHEEL_THREE_L, HIGH);
 }
 
 void turnWheelThreeCounterClockwise(){
-  analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
+  analogWrite(WHEEL_THREE_ENABLE, 100);
   digitalWrite(WHEEL_THREE_R, HIGH);
   digitalWrite(WHEEL_THREE_L, LOW);
 }
@@ -161,13 +162,13 @@ void turnWheelThreeCounterClockwise(){
  * ===================================== */
 
 void turnWheelFourClockwise(){
-  analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
+  analogWrite(WHEEL_FOUR_ENABLE, 100);
   digitalWrite(WHEEL_FOUR_R, HIGH);
   digitalWrite(WHEEL_FOUR_L, LOW);
 }
 
 void turnWheelFourCounterClockwise(){
-  analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
+  analogWrite(WHEEL_FOUR_ENABLE, 100);
   digitalWrite(WHEEL_FOUR_R, LOW);
   digitalWrite(WHEEL_FOUR_L, HIGH);
 }

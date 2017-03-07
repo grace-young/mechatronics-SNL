@@ -52,20 +52,22 @@ static int motor_speed2= 203;
 static int motor_speed3= 165;  
 static int motor_speed4= 173;
 
-static int motor_speed1_fast= 255;
-static int motor_speed2_fast= 255;  
-static int motor_speed3_fast= 255;  
-static int motor_speed4_fast= 255;
+static int motor_speed1_fast= 155;
+static int motor_speed2_fast= 203;  
+static int motor_speed3_fast= 165;  
+static int motor_speed4_fast= 173;
 
-static int motor_speed1_normal= 155;
-static int motor_speed2_normal= 203;  
-static int motor_speed3_normal= 165;  
-static int motor_speed4_normal= 173;
+// these used to be the normal values, but 
+// now they are the fast ones.
+static int motor_speed1_normal= 75;
+static int motor_speed2_normal= 75;  
+static int motor_speed3_normal= 75;  
+static int motor_speed4_normal= 75;
 
-static int motor_speed1_slow= 65; // this was 80
-static int motor_speed2_slow= 65;  // then it was 75
-static int motor_speed3_slow= 65;  
-static int motor_speed4_slow= 65; // might have to do fancy rev thing
+static int motor_speed1_slow= 60; // this was 80
+static int motor_speed2_slow= 60;  // then it was 75
+static int motor_speed3_slow= 60;  
+static int motor_speed4_slow= 60; // might have to do fancy rev thing
 
 
 volatile int pwm_value_motor_control = 0;
@@ -460,6 +462,10 @@ void turnWheelOneCounterClockwise(){
   digitalWrite(WHEEL_ONE_R, LOW);
   digitalWrite(WHEEL_ONE_L, HIGH);
 }
+
+/* =====================================
+ *  STOPPING WHEELS
+ * ===================================== */
 
 void stopAllWheels() {
   stopWheelOne();

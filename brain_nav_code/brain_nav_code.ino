@@ -1,14 +1,14 @@
 #include <Timers.h>
 
-#define PIN_SENSOR_A 7
-#define PIN_SENSOR_B_1 6
-#define PIN_SENSOR_C 4
-#define PIN_SENSOR_D_1 8
-#define PIN_SENSOR_E 5
+#define PIN_SENSOR_A 7 
+#define PIN_SENSOR_B_1 5
+#define PIN_SENSOR_C 8
+#define PIN_SENSOR_D_1 13
+#define PIN_SENSOR_E 12
 
 // need pins for these:
-#define PIN_SENSOR_B_2 NUMBER GOES HERE
-#define PIN_SENSOR_B_2 NUMBER GOES HERE
+#define PIN_SENSOR_B_2 6
+#define PIN_SENSOR_D_2 11
 
 
 #define PIN_COMMS_IN_GYRO        2
@@ -92,7 +92,7 @@ void setup() {
 
 
 void loop() {
-  makeMotorsFast();
+  makeMotorSpeedFast();
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
@@ -196,18 +196,18 @@ void RespDone(){
 
 void RespAlignToShoot(){
   // if we read b, c, & d, we are good
-  if(ReadTapeSensor_B() && ReadTapeSensor_C() && ReadTapeSensor_D()){
+  if(ReadTapeSensor_B_1() && ReadTapeSensor_C() && ReadTapeSensor_D_1()){
      // WE CAN SHOOT
     Serial.println("GOING TO DONE");
     state = DONE;
     makeMotorsStop(); 
   }
-  else if(ReadTapeSensor_C() && ReadTapeSensor_B() && !ReadTapeSensor_D()){
+  else if(ReadTapeSensor_C() && ReadTapeSensor_B_1() && !ReadTapeSensor_D_1()){
     Serial.println("read C & B & not D");
   } 
-  else if (ReadTapeSensor_C() && !ReadTapeSensor_B() && ReadTapeSensor_D()){
+  else if (ReadTapeSensor_C() && !ReadTapeSensor_B_1() && ReadTapeSensor_D_1()){
     Serial.println("read C & D & not B");
-  }else if(ReadTapeSensor_C() && !ReadTapeSensor_B() && !ReadTapeSensor_D){
+  }else if(ReadTapeSensor_C() && !ReadTapeSensor_B_1() && !ReadTapeSensor_D_1){
      // NOT ALIGNED
      if(alignLeft){
         // trying to turn counter clockwise
@@ -287,7 +287,7 @@ void RespAtBackOfBox(){
 }
 
 void RespToWait(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL,COMM_MOTOR_COAST_STOP);
+  makeMotorsCoastStop();
   if(decodeSignalFromComms() == 0){
       startGyroNegative = true;
   }else{
@@ -299,12 +299,15 @@ void RespToWait(){
 }
 
 void RespToStart(){
-  
-  analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW);
+    // speed used to be slow but now normal
+   //analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_NORMAL); 
+   makeMotorSpeedNormal();
   if(startGyroNegative && (decodeSignalFromComms() == 0)){
-    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+    makeMotorsSpinCL();
   } else if(!startGyroNegative && (decodeSignalFromComms() == 1)){
-    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+    makeMotorsSpinCC();
   } else{
     state = ORIENTATION_STRAIGHT;
     fake_timer = millis();
@@ -347,15 +350,15 @@ void RespRightEndLine(){
  *  ReadTapeSensor functions
  * ====================================================================
  */
-
 bool ReadTapeSensor_A(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_A);
+    return digitalRead(PIN_SENSOR_A);
 }
 
 bool ReadTapeSensor_B_1(void){
-    // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_B_1);
+    // 0 if read tape, 1 if not 
+    // CHECKED
+    return digitalRead(PIN_SENSOR_B_1);
 }
 
 bool ReadTapeSensor_B_2(void){
@@ -364,23 +367,25 @@ bool ReadTapeSensor_B_2(void){
 }
 
 bool ReadTapeSensor_C(void){
-    // 1 if read tape, 0 if not 
+    // 1 if read tape, 0 if not
+    // CHECKED 
     return !digitalRead(PIN_SENSOR_C);
 }
 
 bool ReadTapeSensor_D_1(void){
-    // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_D_1);
+    // 0 if read tape, 1 if not 
+    return digitalRead(PIN_SENSOR_D_1);
 }
 
 bool ReadTapeSensor_D_2(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_D_2);
+    return digitalRead(PIN_SENSOR_D_2);
 }
 
 bool ReadTapeSensor_E(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_E);
+    // CHECKED
+    return digitalRead(PIN_SENSOR_E);
 }
 
 /* ====================================================================
@@ -396,16 +401,24 @@ void makeMotorsMoveBackward(){
   analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_BACKWARD);
 }
  
-void makeMotorsSlow(){
+void makeMotorSpeedSlow(){
   analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_SLOW); 
 }
 
-void makeMotorsFast(){
+void makeMotorSpeedNormal(){
+  analogWrite(PIN_OUTPUT_SPEED_CONTROL,COMM_MOTOR_NORMAL); 
+}
+
+void makeMotorSpeedFast(){
   analogWrite(PIN_OUTPUT_SPEED_CONTROL,COMM_MOTOR_FAST);
 }
 
 void makeMotorsStop(){
   analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_STOP);
+}
+
+void makeMotorsCoastStop(){
+  analogWrite(PIN_OUTPUT_MOTOR_CONTROL,COMM_MOTOR_COAST_STOP); 
 }
 
 void makeMotorsSpinCL(){
@@ -451,8 +464,8 @@ void SetupPins(){
 
 void UpdateTapeSensorVars(void){
    // Change state based on tape sensors
-   if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // All tapes sensors are READ TAPE
       //state = STATE_ON_CROSS_LINE_A_B_C_D_E;   
         isTapeOn_A = true;
@@ -462,8 +475,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 31
    }  
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // Read B, C, D, E
       //state = STATE_BOTTOM_T_LINE_B_C_D_E;
         isTapeOn_A = false;
@@ -473,8 +486,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 15   
    }
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // Read B, C, D
 //      state = STATE_ON_HORZ_LINE_B_C_D; 
         isTapeOn_A = false;
@@ -486,8 +499,8 @@ void UpdateTapeSensorVars(void){
    }  
 
 
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // All tapes sensors are READ TAPE
 //      state = STATE_NO_TAPE_DETECTED;   
         isTapeOn_A = false;
@@ -497,8 +510,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 0
    }  
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // All tapes sensors are READ TAPE
 //      state = STATE_ONLY_TAPE_E;
         isTapeOn_A = false;
@@ -508,8 +521,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 1   
    }  
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // right edge
 //      state = STATE_ONLY_TAPE_D;   
         isTapeOn_A = false;
@@ -519,8 +532,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 2
    }  
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // back right edge, mirrors B E
 //      state = STATE_BACK_RIGHT_ON_LINE_D_E;   
         isTapeOn_A = false;
@@ -530,8 +543,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 3
    }  
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // All tapes sensors are READ TAPE
 //      state = STATE_ONLY_TAPE_C;   
         isTapeOn_A = false;
@@ -541,8 +554,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 4
    }  
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE C and E
       // back center on 
 //      state = STATE_BACK_CENTER_LINE_C_E;   
@@ -553,8 +566,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 5
    }     
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE C and D
       // center right on 
 //      state = STATE_CENTER_RIGHT_C_D;   
@@ -565,8 +578,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 6
    }     
-   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE C and D and E
       // back right corner  
 //      state = STATE_BACK_RIGHT_CORNER_C_E_D;   
@@ -577,8 +590,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 7
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE B
       // left edge  
 //      state = STATE_ONLY_TAPE_B;   
@@ -589,8 +602,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 8
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE B and E
       // left diagonal, mirrors D and E
 //      state = STATE_BACK_RIGHT_ON_LINE_B_E;   
@@ -601,8 +614,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 9
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE B and D
       // could be on a corner
 //      state = STATE_COULD_BE_ON_CORNER_B_D;   
@@ -613,8 +626,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 10
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE B and D and E
       // could be on a corner
 //      state = STATE_ONLY_TAPE_B_D_E;   
@@ -625,8 +638,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 11
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE B and C
       // on left side of line, mirrors D and C
 //      state = STATE_CENTER_LEFT_B_C;   
@@ -637,8 +650,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 12
    }     
-   else if (!ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (!ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE B and C and E
       // on left side of line, mirrors D and C E
 //      state = STATE_BACK_LEFT_CORNER_B_C_E;   
@@ -649,8 +662,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 13
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A
       // recognize just center top
 //      state = STATE_ONLY_TAPE_A;   
@@ -661,8 +674,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 16
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and E
       // just top and bottom, like B and D
 //      state = STATE_COULD_BE_ON_CORNER_A_E;   
@@ -673,8 +686,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 17
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and D
       // similar to A and B
 //      state = STATE_TOP_RIGHT_CORNER_A_D;   
@@ -685,8 +698,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 18
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and D and E
 //      state = STATE_ONLY_TAPE_A_D_E;   
         isTapeOn_A = true;
@@ -696,8 +709,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 19
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and C
       // similar to C E 
 //      state = STATE_TOP_CENTER_LINE_A_C;   
@@ -708,8 +721,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 20
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and C and E
 //      state = STATE_TOP_CENTER_LINE_A_C_E;   
         isTapeOn_A = true;
@@ -719,8 +732,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 21
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and C and D
 //      state = STATE_TOP_RIGHT_CORNER_A_C_D;   
         isTapeOn_A = true;
@@ -730,8 +743,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 22
    }     
-   else if (ReadTapeSensor_A() && !ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && !ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and C and D and E
       // mirrors ACBE
 //      state = STATE_RIGHT_SIDE_A_C_D_E;   
@@ -742,8 +755,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 23
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and B
       // mirrros A D
 //      state = STATE_TOP_LEFT_DIAG_A_B;   
@@ -754,8 +767,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 24
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and B and E
 //      state = STATE_LEFT_SIDE_A_B_E;   
         isTapeOn_A = true;
@@ -765,8 +778,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 25
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and B and D
 //      state = STATE_TOP_SIDE_A_B_D;   
         isTapeOn_A = true;
@@ -776,8 +789,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 26
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and B and D and E
 //      state = STATE_ALL_BUT_CENTER_A_B_D_E;   
         isTapeOn_A = true;
@@ -787,8 +800,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 27
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       !ReadTapeSensor_C() && !ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       !ReadTapeSensor_C() && !ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and B and C
 //      state = STATE_TOP_LEFT_CORNER_A_B_C;   
         isTapeOn_A = true;
@@ -798,8 +811,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = false;
       // 28
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && !ReadTapeSensor_D() && ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && !ReadTapeSensor_D_1() && ReadTapeSensor_E()){
       // READ TAPE A and B and C and E
 //      state = STATE_LEFT_SIDE_A_B_C_E;   
         isTapeOn_A = true;
@@ -809,8 +822,8 @@ void UpdateTapeSensorVars(void){
         isTapeOn_E = true;
       // 29
    }     
-   else if (ReadTapeSensor_A() && ReadTapeSensor_B() && 
-       ReadTapeSensor_C() && ReadTapeSensor_D() && !ReadTapeSensor_E()){
+   else if (ReadTapeSensor_A() && ReadTapeSensor_B_1() && 
+       ReadTapeSensor_C() && ReadTapeSensor_D_1() && !ReadTapeSensor_E()){
       // READ TAPE A and B and C and d
 //      state = STATE_TOP_T_LINE_A_B_C_D;   
         isTapeOn_A = true;

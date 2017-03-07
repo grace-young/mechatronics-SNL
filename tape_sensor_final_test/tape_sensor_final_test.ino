@@ -1,12 +1,12 @@
 #define PIN_SENSOR_A 7 
-#define PIN_SENSOR_B_1 6
-#define PIN_SENSOR_C 4
-#define PIN_SENSOR_D_1 8
-#define PIN_SENSOR_E 5
+#define PIN_SENSOR_B_1 5
+#define PIN_SENSOR_C 8
+#define PIN_SENSOR_D_1 13
+#define PIN_SENSOR_E 12
 
 // need pins for these:
-#define PIN_SENSOR_B_2 NUMBER GOES HERE
-#define PIN_SENSOR_D_2 NUMBER GOES HERE
+#define PIN_SENSOR_B_2 6
+#define PIN_SENSOR_D_2 11
 
 void setup() {
   // put your setup code here, to run once:
