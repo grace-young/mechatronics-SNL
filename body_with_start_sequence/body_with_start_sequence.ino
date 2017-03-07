@@ -189,12 +189,13 @@ void updateMotorSpeeds(){
 
 void decodeSignalsFromBrain(){
   int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
-  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 3);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 11);
 
 
-  // 0-640 --> 0
-  // 640-1280 --> 1
-  // 510-765 --> 2
+  // 20 --> 0 normal speed
+  // 40 --> 1 slow speed
+  // 60 --> 2 fast speed 
+  // 80 --> 3 clear gyro
   // UNCLEAR IF THIS WORKS OR NOT
 //  Serial.println(pwm_value_motor_control);
 //  Serial.println(motorstate);
@@ -219,6 +220,10 @@ void decodeSignalsFromBrain(){
       motor_speed2 = motor_speed2_fast;
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
+      break;
+     case 3:
+      //Serial.println("2");
+      orientation = 0;
       break;
     default:
       //Serial.println("default");
