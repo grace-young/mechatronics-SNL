@@ -26,9 +26,10 @@
 
 #define TIMER_0            0
 
-#define COMM_MOTOR_NORMAL  50
-#define COMM_MOTOR_SLOW    100
-#define COMM_MOTOR_FAST    200
+#define COMM_MOTOR_NORMAL  20
+#define COMM_MOTOR_SLOW    40
+#define COMM_MOTOR_FAST    60
+#define COMM_ZERO_GYRO     80
 // add the comm to reset gyro at some way
 //#define COMM_MOTOR_RESET_GYRO  180
 
@@ -92,7 +93,7 @@ void setup() {
 
 
 void loop() {
-  makeMotorSpeedFast();
+  makeMotorSpeedNormal();
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
