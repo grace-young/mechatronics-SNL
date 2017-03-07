@@ -58,25 +58,30 @@ void loop() {
   turnRightSide(speed+(curr_gyro-target_gyro*KP_R));
 }
 void turnLeftSide(int speed){
-  analogWrite(WHEEL_ONE_ENABLE, abs(speed));
+  analogWrite(WHEEL_TWO_ENABLE, abs(speed));
   if (speed>=0){
-    digitalWrite(WHEEL_ONE_R, LOW);
-    digitalWrite(WHEEL_ONE_L, HIGH);
+    // turns right
+    digitalWrite(WHEEL_TWO_R, LOW);
+    digitalWrite(WHEEL_TWO_L, HIGH);
   } else {
-    digitalWrite(WHEEL_ONE_R, HIGH);
-    digitalWrite(WHEEL_ONE_L, LOW);
+    digitalWrite(WHEEL_TWO_R, HIGH);
+    digitalWrite(WHEEL_TWO_L, LOW);
   }
 }
 
 void turnRightSide (int speed){
-  analogWrite(WHEEL_THREE_ENABLE, abs(speed));
+  analogWrite(WHEEL_FOUR_ENABLE, abs(speed));
   if (speed>=0){
-    digitalWrite(WHEEL_THREE_R, LOW);
-    digitalWrite(WHEEL_THREE_L, HIGH);
+    digitalWrite(WHEEL_FOUR_R, LOW);
+    digitalWrite(WHEEL_FOUR_L, HIGH);
   } else {
-    digitalWrite(WHEEL_THREE_R, HIGH);
-    digitalWrite(WHEEL_THREE_L, LOW);
+    digitalWrite(WHEEL_FOUR_R, HIGH);
+    digitalWrite(WHEEL_FOUR_L, LOW);
   }
+}
+
+void driveForward(){
+  
 }
 
 int getGyroPosition(){

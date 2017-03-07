@@ -152,8 +152,10 @@ void RespFoundHorzLine(){
 }
 
 
-
-//reading tape sensors
+/* ====================================================================
+ *  sensors
+ * ====================================================================
+ */
 
 bool ReadTapeSensor_A(void){
     // 1 if read tape, 0 if not 
