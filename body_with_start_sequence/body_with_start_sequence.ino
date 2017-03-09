@@ -1,11 +1,11 @@
 #include <Timers.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
 
-#define MotorControlPin 2
+#define MotorControlPin      2
 #define MotorSpeedControlPin 3
+#define COMMS_OUT_TO_BRAIN   9
 
-
+// yellow -> output motor state
 
 #define TIME_INTERVAL      500
 #define TIMER_0            0
@@ -23,15 +23,10 @@
 #define WHEEL_ONE_R 7
 
 // each enable pin must be able to analogWrite to
-#define WHEEL_ONE_ENABLE     3
+#define WHEEL_ONE_ENABLE     10
 #define WHEEL_TWO_ENABLE     6
 #define WHEEL_THREE_ENABLE   11
 #define WHEEL_FOUR_ENABLE    5
-
-#define LED1  2
-#define LED2  3
-#define LED3  9
-#define LED4  A3
 
 #define LIMIT_ON_ANALOG      255
 
@@ -50,6 +45,10 @@
 #define    ACC_FULL_SCALE_16_G       0x18
 //Gyro stuff ends
 
+//commands to Brain 
+#define   GYRO_NEGATIVE             20
+#define   GYRO_POSITIVE             40
+
 static int motor_speed1= 155;
 static int motor_speed2= 203;  
 static int motor_speed3= 165;  
@@ -67,10 +66,16 @@ static int motor_speed2_normal= 85;
 static int motor_speed3_normal= 85;  
 static int motor_speed4_normal= 85;
 
-static int motor_speed1_slow= 90; // this was 80
-static int motor_speed2_slow= 90;  // then it was 75
-static int motor_speed3_slow= 90;  
-static int motor_speed4_slow= 90; // might have to do fancy rev thing
+static int motor_speed1_slow= 60; // this was 80
+static int motor_speed2_slow= 60;  // then it was 75
+static int motor_speed3_slow= 60;  
+static int motor_speed4_slow= 60; // might have to do fancy rev thing
+
+
+volatile int pwm_value_motor_control = 0;
+volatile int prev_time_motor_control = 0;
+volatile int pwm_value_motor_speed = 0;
+volatile int prev_time_motor_speed = 0;
 
 unsigned long time_last_printed;
 
@@ -86,33 +91,8 @@ long int cpt=0; //count
 bool statedPositive;
 //Gyro variables end
 
-// NEW CONSTANTS
-const char COMM_MOTOR_NORMAL  = 'a';
-const char COMM_MOTOR_SLOW = 'b';
-const char COMM_MOTOR_FAST = 'c';
-const char COMM_ZERO_GYRO = 'd';
-
-const char COMM_MOTOR_COAST_STOP = 'e';
-const char COMM_MOTOR_FORWARD = 'f';
-const char COMM_MOTOR_BACKWARD = 'g';
-const char COMM_MOTOR_LEFT = 'h';
-const char COMM_MOTOR_RIGHT = 'i';
-const char COMM_MOTOR_SPIN_CC = 'j';
-const char COMM_MOTOR_SPIN_CL = 'k';
-const char COMM_MOTOR_STOP = 'l';
-const char COMM_MOTOR_BACKWARD_JIGGLE = 'm';
-
-
-// this is RX
-#define PIN_COMMS_IN_HERE_RX    0 // number goes here!!!
-
-#define PIN_GYRO                9
-
 void setup() {
-    SetupPins();
-  // this is the sending serial
-  Serial.begin(57600); // 115200 USE FASTEST SETTING FOR COMMS
-  
+  Serial.begin(9600);
   Wire.begin();
 
   //Gyro Configuration
@@ -121,8 +101,11 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
   // Configure accelerometers range
   I2CwriteByte(MPU9250_ADDRESS,28,ACC_FULL_SCALE_16_G);
   
+  SetupPins();
   jiggleClockwise = true;
   
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
@@ -137,7 +120,8 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
-  // now signals from brain happens asynchronusly
+  turnWheelFourCounterClockwise();
+  decodeSignalsFromBrain();
   communicateGyroInfo();
   
 ////////////GYRO
@@ -153,13 +137,10 @@ void loop() {
   int16_t gy=-(Buf[10]<<8 | Buf[11]);
   int16_t gz=Buf[12]<<8 | Buf[13];
 
-   // Accelerometer
-//  int16_t ax=-(Buf[0]<<8 | Buf[1]);
-//  int16_t ay=-(Buf[2]<<8 | Buf[3]);
-//  int16_t az=Buf[4]<<8 | Buf[5];
-
+//  Serial.print("z ");
+//  Serial.print(gz,DEC);  
 //  Serial.print("orientation");
-//  Serial.println(orientation);
+  Serial.println(orientation);
   flag = false;
   if ( (abs(gx) > 600 || abs(gy) > 600)) {
     flag = true;
@@ -186,81 +167,125 @@ void loop() {
 ////////////GYRO END
 }
 
-void serialEvent(){
-  while (Serial.available()) {
-    // get the new byte:
-    char inChar = (char)Serial.read();
-    decodeSignalsFromBrain(inChar);   
-    }
-}
-
-
-
-
 void updateMotorSpeeds(){
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
   analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
+//  Serial.println("Wrote speed:");
+//  Serial.println(motor_speed1);  
 }
 
-void decodeSignalsFromBrain(char comm_state){
-  switch(comm_state){
-    case COMM_MOTOR_NORMAL:
+void decodeSignalsFromBrain(){
+  int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 11);
+
+
+  // 20 --> 0 normal speed
+  // 40 --> 1 slow speed
+  // 60 --> 2 fast speed 
+  // 80 --> 3 clear gyro
+  // UNCLEAR IF THIS WORKS OR NOT
+//  Serial.println(pwm_value_motor_control);
+  Serial.println(motorstate);
+  switch(motorspeed){
+    case 0://20
+      //Serial.println("0");
       motor_speed1 = motor_speed1_normal;
       motor_speed2 = motor_speed2_normal;
       motor_speed3 = motor_speed3_normal;
       motor_speed4 = motor_speed4_normal;
       break;
-    case COMM_MOTOR_SLOW:
+    case 1://40
+      //Serial.println("1");
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
       motor_speed4 = motor_speed4_slow;
       break;
-    case COMM_MOTOR_FAST:
+    case 2://60
+      //Serial.println("2");
       motor_speed1 = motor_speed1_fast;
       motor_speed2 = motor_speed2_fast;
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
       break;
-     case COMM_ZERO_GYRO:
+     case 3:
+      //Serial.println("2");
       orientation = 0;
       break;
-    case COMM_MOTOR_COAST_STOP:
+    default:
+      //Serial.println("default");
+      motor_speed1 = motor_speed1_slow;
+      motor_speed2 = motor_speed2_slow;
+      motor_speed3 = motor_speed3_slow;
+      motor_speed4 = motor_speed4_slow;
+      break;
+  }
+  
+  switch(motorstate){
+    case 0://turn everything off 20
       coastStopAll();
       break;
-    case COMM_MOTOR_FORWARD:
+    case 1://40
       goForwardCrossDir();
+      //goForwardOmniDir();
       break;
-    case COMM_MOTOR_BACKWARD:
+    case 2://60
       goBackwardsCrossDir();
+      //goBackwardsOmniDir();
       break;
-    case COMM_MOTOR_LEFT:
+    case 3://80
       goLeftCrossDir();
+      //goLeftOmniDir();
       break;
-    case COMM_MOTOR_RIGHT:
+    case 4://100
       goRightCrossDir();
+      //goRightOmniDir();
       break;
-    case COMM_MOTOR_SPIN_CC:
+    case 5://120
       rotateCounterClockwise();
       break;
-    case COMM_MOTOR_SPIN_CL:
+    case 6://140
       rotateClockwise();
       break;
-    case COMM_MOTOR_STOP:
+    case 7://160
       stopAllWheels();
       break;
-    case COMM_MOTOR_BACKWARD_JIGGLE: 
+    case 8: //180
       goBackwardsCrossDirJiggle();
       break;
     default:
+      coastStopAll();
       break;
   }
 }
 
-void SetupPins() {    
-  pinMode(PIN_COMMS_IN_HERE_RX, INPUT);
+void findFreqMotorControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), freqCountMotorControl, FALLING);
+  prev_time_motor_control = micros();
+}
+void freqCountMotorControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
+  pwm_value_motor_control = micros() - prev_time_motor_control;
+//  Serial.print("MOTOR CONTROL ");
+//  Serial.println(pwm_value_motor_control);
+}
+
+void findFreqMotorSpeedControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), freqCountMotorSpeedControl, FALLING);
+  prev_time_motor_speed = micros();
+}
+void freqCountMotorSpeedControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
+  pwm_value_motor_speed = micros() - prev_time_motor_speed;
+//   Serial.print("MOTOR SPEED ");
+//  Serial.println(pwm_value_motor_speed);
+}
+
+void SetupPins() {  
+  pinMode(MotorControlPin, INPUT);
+  pinMode(MotorSpeedControlPin, INPUT);
   
   pinMode(WHEEL_ONE_ENABLE, OUTPUT);
   pinMode(WHEEL_TWO_ENABLE, OUTPUT);
@@ -278,13 +303,6 @@ void SetupPins() {
 
   pinMode(WHEEL_ONE_L, OUTPUT);
   pinMode(WHEEL_ONE_R, OUTPUT);
-
-  pinMode(PIN_GYRO, OUTPUT);
-
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  pinMode(LED4, OUTPUT);
 }
 
 void coastStopAll(){
@@ -387,6 +405,7 @@ void rotateClockwise() {
 }
 
 void rotateCounterClockwise() {
+  Serial.println("counter clockwise spin");
   turnWheelFourClockwise();
   turnWheelTwoClockwise();
   turnWheelThreeClockwise();
@@ -480,15 +499,34 @@ void stopWheelFour() {
   digitalWrite(WHEEL_FOUR_L, HIGH);
 }
 
-
-void communicateGyroInfo(){
-  if(orientation <= 0){
-    digitalWrite(PIN_GYRO, LOW);
-  } else if(orientation > 0){
-    digitalWrite(PIN_GYRO, HIGH);
+void serialEvent(){
+  while (Serial.available()) {
+    char inChar = (char)Serial.read();
+    Serial.println(inChar);
+      if (inChar == 'L' || inChar == 'l') {
+          // increase speed
+          if(motor_speed1 + 10 <= LIMIT_ON_ANALOG){
+             motor_speed1 = motor_speed1 + 10;
+          }
+      }
+      else if (inChar == 'k' || inChar == 'K') {
+          // decrease speed
+          if(motor_speed1 - 10 >= 0){
+            motor_speed1 = motor_speed1 - 10;
+          }
+    }
   }
 }
 
+void communicateGyroInfo(){
+  if(orientation <= 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_NEGATIVE);
+    //Serial.println("negative");
+  } else if(orientation > 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_POSITIVE);
+    //Serial.println("positive");
+  }
+}
 
 //Gyro Functions
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)

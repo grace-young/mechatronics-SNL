@@ -88,11 +88,9 @@ static unsigned long stepper_timer;
 #define TIME_TO_PAUSE      1250
 
 // more comms things:
-//#define PIN_COMMS_IN_HERE_RX   10
 #define PIN_COMMS_OUT_HERE_TX  1
 
-//SoftwareSerial brainSerial(PIN_COMMS_IN_HERE_RX, PIN_COMMS_OUT_HERE_TX);
-
+#define PIN_GYRO           9
 typedef enum {
   WAIT, START, ORIENTATION_STRAIGHT,
   AT_BACK_OF_BOX, CROSSED_FIRST_LINE, 
@@ -160,11 +158,6 @@ void CheckGlobalStates(void){
 }
 
 int decodeSignalFromComms(){
-  //char comm_state = 'z';
-//  if(brainSerial.available()){
- //   // hopefully should not get stopped up
- //   comm_state = brainSerial.read();
-//  }
   char comm_state = 'a';
   switch (comm_state){
     case GYRO_NEGATIVE:
@@ -310,15 +303,10 @@ void RespToStart(){
    * 1 - gyro positive
    */
    int comm_ret = decodeSignalFromComms();
-  if(startGyroNegative && (comm_ret == 0)){
-    //Serial.write(COMM_MOTOR_SPIN_CC);
-    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
-    digitalWrite(PIN_GREEN_DEBUG, LOW);
-    //makeMotorsSpinCL();
-  } else if(!startGyroNegative && (comm_ret == 1)){
-    //Serial.write(COMM_MOTOR_SPIN_CL);
-    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
-    //makeMotorsSpinCC();
+  if(startGyroNegative && !ReadIfGyroPositive()){
+    makeMotorsSpinCC();
+  } else if(!startGyroNegative && ReadIfGyroPositive()){
+    makeMotorsSpinCL();
   } else{
     state = ORIENTATION_STRAIGHT;
     fake_timer = millis();
@@ -327,9 +315,8 @@ void RespToStart(){
 
 void RespOrientationStraight(){
   // stop
-  //analogWrite(PIN_OUTPUT_SPEED_CONTROL, 60);
   makeMotorSpeedFast();
-
+// do we need delay's here???
   makeMotorsJiggleBackwards();
  
   // go backward for 2 seconds
@@ -392,6 +379,10 @@ bool ReadTapeSensor_E(void){
     // 1 if read tape, 0 if not 
     // CHECKED
     return digitalRead(PIN_SENSOR_E);
+}
+
+bool ReadIfGyroPositive(void){
+    return digitalRead(PIN_GYRO);
 }
 
 /* ====================================================================
@@ -465,11 +456,10 @@ void SetupPins(){
   pinMode(PIN_GREEN_DEBUG, OUTPUT);
   pinMode(PIN_RED2_DEBUG, OUTPUT);
   
+  pinMode(PIN_GYRO, INPUT);
   
- // pinMode(PIN_COMMS_IN_HERE_RX, INPUT);
   pinMode(PIN_COMMS_OUT_HERE_TX, OUTPUT);
   
-  //pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
   pinMode(PIN_GAME_START, INPUT_PULLUP);
 
   pinMode(PULSE_STEPPER, OUTPUT);
