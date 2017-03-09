@@ -133,7 +133,7 @@ void setup() {
 
 
 void loop() {
-
+  Serial.println(digitalRead(PIN_SENSOR_B_1));
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
@@ -200,7 +200,7 @@ void freqCountComms(){
 
 int decodeSignalFromComms(){
   int commsState = map(pwm_value_comms, 0, 1920, 0, 11);
-  Serial.println(commsState);
+  //Serial.println(commsState);
   /*
    * 0 - gyro negative
    * 1 - gyro positive
@@ -252,10 +252,12 @@ void respondToShoot() {
       Serial.println("STEPPER_respond_to_shoot");
     digitalWrite(FLYWHEEL_ON, HIGH);
     if(IsPulseFinished()){
-      pulses_done = true;
+      //pulses_done = true;
     }
     if(millis() - stepper_timer > STEPPER_TIME_INTERVAL){
-      setupPulses();
+      shoot_count ++;
+      delay(1000);
+      //setupPulses();
     }
 }
 
