@@ -24,7 +24,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-    stopAllWheels();
+    goBackwardsCrossDir();
 }
 
 
@@ -95,14 +95,14 @@ void goLeftCrossDir(){
  *  Turn All Wheels
  * ===================================== */
 
-void rotateClockwise() {
+void rotateCounterClockwise() {
   turnWheelFourClockwise();
   turnWheelTwoClockwise();
   turnWheelThreeCounterClockwise();
   turnWheelOneCounterClockwise();
 }
 
-void rotateCounterClockwise() {
+void rotateClockwise() {
   turnWheelFourCounterClockwise();
   turnWheelTwoCounterClockwise();
   turnWheelThreeClockwise();
