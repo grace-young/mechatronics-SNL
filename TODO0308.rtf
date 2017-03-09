@@ -1,0 +1,39 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1504\cocoasubrtf810
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 TODO:\
+Check drive base code to make sure communications work\
+Fill in ReadGyro to start on right/negative (digital pin from body)\
+	change pin_gyro_comm\
+Fill in ExtendEye for tape sensor to extend out, make sure that in the time for moving the robot left in \
+Fill in RetractEye for tape sensor to go back-should be enough time between going backwards from the second/third line to hitting right wall, should be fine\
+SlamLeft, it can extend out all the way (if not, add a timer/delay)\
+Fill in Shoot() for the servo/flywheel code\
+\
+HIGHLY RECOMMEND ADDING LIMIT SWITCHES!!! would be more accurate\
+\
+Debug timer/add limit switch\
+**Leave timer in the code as a backup in case limit switches break!!!!!!****\
+TIME_JIGGLE_BACKWARDS in OrientationStraight()\
+	Or add back limit switch\
+TIME_MOVE_LEFT in RespSlamLeft()\
+	Or add left limit switch\
+	Change speed?\
+	Make sure servo can extend all the way\
+TIME_BETWEEN_LINE_TAPE_READS in RespLookForTape()\
+TIME_GO_BACK in RespHeadBack() going from third/second line back to original\
+	Add back limit switch\
+TIME_GO_RIGHT from left long side to right long side along the back wall\
+	Add right limit switch\
+TIME_BLOCK along right long side from back wall to the tower to hit the pressure sensor\
+	Add front limit switch\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 TIME_RELOAD from right long side to the middle of the safety box+reload time (along back wall)\
+	TEST!!!!\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+Make sure respreload (right tape sensors detect right edge of safe space) allows enough time to actually be fully in the box}
