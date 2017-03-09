@@ -24,7 +24,13 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-    goBackwardsCrossDir();
+    //goRightCrossDir();
+    turnWheelOneClockwise();
+    /*turnWheelTwoClockwise();
+    turnWheelFourCounterClockwise();
+    coastStopWheelOne();
+    coastStopWheelThree();
+    */
 }
 
 
@@ -114,13 +120,13 @@ void rotateClockwise() {
  * ===================================== */
 
 void turnWheelOneClockwise(){
-  analogWrite(WHEEL_ONE_ENABLE, 100);
+  analogWrite(WHEEL_ONE_ENABLE, 200);
   digitalWrite(WHEEL_ONE_R, HIGH);
   digitalWrite(WHEEL_ONE_L, LOW);
 }
 
 void turnWheelOneCounterClockwise(){
-  analogWrite(WHEEL_ONE_ENABLE, 100);
+  analogWrite(WHEEL_ONE_ENABLE, 200);
   digitalWrite(WHEEL_ONE_R, LOW);
   digitalWrite(WHEEL_ONE_L, HIGH);
 }
@@ -146,13 +152,13 @@ void turnWheelTwoCounterClockwise(){
  * ===================================== */
 
 void turnWheelThreeClockwise(){
-  analogWrite(WHEEL_THREE_ENABLE, 100);
+  analogWrite(WHEEL_THREE_ENABLE, 200);
   digitalWrite(WHEEL_THREE_R, LOW);
   digitalWrite(WHEEL_THREE_L, HIGH);
 }
 
 void turnWheelThreeCounterClockwise(){
-  analogWrite(WHEEL_THREE_ENABLE, 100);
+  analogWrite(WHEEL_THREE_ENABLE, 200);
   digitalWrite(WHEEL_THREE_R, HIGH);
   digitalWrite(WHEEL_THREE_L, LOW);
 }
@@ -162,13 +168,13 @@ void turnWheelThreeCounterClockwise(){
  * ===================================== */
 
 void turnWheelFourClockwise(){
-  analogWrite(WHEEL_FOUR_ENABLE, 100);
+  analogWrite(WHEEL_FOUR_ENABLE, 200);
   digitalWrite(WHEEL_FOUR_R, HIGH);
   digitalWrite(WHEEL_FOUR_L, LOW);
 }
 
 void turnWheelFourCounterClockwise(){
-  analogWrite(WHEEL_FOUR_ENABLE, 100);
+  analogWrite(WHEEL_FOUR_ENABLE, 200);
   digitalWrite(WHEEL_FOUR_R, LOW);
   digitalWrite(WHEEL_FOUR_L, HIGH);
 }
