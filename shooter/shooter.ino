@@ -1,64 +1,47 @@
 #include <Timers.h>
 #include <Pulse.h>
+#include <Servo.h>
 
-<<<<<<< HEAD
-#define PULSE_STEPPER 7
-#define FLYWHEEL_ON A5
-=======
+//STEPPER
 #define PIN_OUT_PULSE_STEPPER 5
 #define PIN_OUT_FLYWHEEL_ON 6
 #define PIN_IN_START_SHOOTING 7
 #define PIN_OUT_SHOOTING_END 8
 
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f
 #define STEPPER_PERIOD 200
 #define NUM_PULSES 28
 
 #define STEPPER_WAIT_TIMER 0
 #define STEPPER_TIME_INTERVAL 3000
 
-<<<<<<< HEAD
-bool shoot = true;
-bool pulses_done = false;
-=======
+//SERVO
+#define SERVO_PIN_PULSE_OUT 9
+#define SERVO_PULSE_IN 10
+
+//STEPPER
 static bool shoot = false;
 static bool pulses_done = false;
 static bool sawShoot = false;
 static int numShot = 0;
 
+//SERVO
+const int servo_angle = 165;
+static bool turn_servo = true;
 
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f
+Servo myservo;
+
 
 void setup() {
   Serial.begin(9600);
   pinSetup();
   //setupPulses();
   TMRArd_InitTimer(STEPPER_WAIT_TIMER, STEPPER_TIME_INTERVAL);
-<<<<<<< HEAD
-}
-
-void pinSetup() {
-  pinMode(PULSE_STEPPER, OUTPUT);
-  pinMode(FLYWHEEL_ON, OUTPUT);
-}
-
-void loop() {
-  if(shoot){
-    respondToShoot();
-  }
-  else{
-    endShoot();
-  }
-}
-
-void setupPulses(){
-  Serial.println("setup");
-  EndPulse(); // stops the old speed pulses 
-  InitPulse(PULSE_STEPPER, STEPPER_PERIOD); // set new pulses
-=======
   digitalWrite(PIN_OUT_SHOOTING_END, LOW);
   digitalWrite(PIN_OUT_FLYWHEEL_ON,LOW);
   digitalWrite(PIN_OUT_PULSE_STEPPER,LOW);
+
+  myservo.attach(SERVO_PIN_PULSE_OUT);
+  myservo.write(servo_angle);
 }
 
 void pinSetup() {
@@ -66,66 +49,68 @@ void pinSetup() {
   pinMode(PIN_OUT_FLYWHEEL_ON, OUTPUT);
   pinMode(PIN_OUT_SHOOTING_END, OUTPUT);
   pinMode(PIN_IN_START_SHOOTING, INPUT);
+  pinMode(SERVO_PIN_PULSE_OUT, OUTPUT);
+  pinMode(SERVO_PULSE_IN, INPUT);
 }
 
 void loop() {
-  Serial.print("PIN");
-  Serial.println(digitalRead(PIN_IN_START_SHOOTING));
-  Serial.print("Shoot");
-  Serial.println(shoot);
-   Serial.print("numShoot");
-  Serial.println(numShot);
-  Serial.print("sawShoot");
-  Serial.println(sawShoot);
-  
-  //Serial.println(
-  //Serial.println(digitalRead(PIN_IN_START_SHOOTING));
-  if(digitalRead(PIN_IN_START_SHOOTING) && !sawShoot){
+  if(shouldShoot() && !sawShoot){
     shoot = true;
+    announceStillShooting();
     sawShoot = true;
   }
-  if(numShot > 3){
+  if(numShot > 3) {
     endShoot();
-    delay(1000);
+    delay(1000); //is this what we want?
   }
-  else if(shoot){
-    digitalWrite(PIN_OUT_SHOOTING_END,LOW);
+  else if(shoot) {
+    announceStillShooting();
     respondToShoot();
   }
- 
+
+  if (shouldDeployEye() && turn_servo) {
+    armEye();
+    Serial.println("ARMED");
+  } else if (!shouldDeployEye() && !turn_servo) {
+    retractEye();
+    Serial.println("RETRACTED");
+  } 
+}
+
+bool shouldDeployEye(){
+  return digitalRead(SERVO_PULSE_IN);
+}
+
+bool shouldShoot(){
+  return digitalRead(PIN_IN_START_SHOOTING);
+}
+
+void announceStillShooting(){
+  digitalWrite(PIN_OUT_SHOOTING_END,HIGH);
 }
 
 void setupPulses(){
   numShot++;
-  Serial.println("setup");
+//  Serial.println("setup");
   EndPulse(); // stops the old speed pulses 
   InitPulse(PIN_OUT_PULSE_STEPPER, STEPPER_PERIOD); // set new pulses
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f
   Pulse(NUM_PULSES); 
   pulses_done = false;
   TMRArd_InitTimer(STEPPER_WAIT_TIMER, STEPPER_TIME_INTERVAL);
 }
 
 void endShoot(){
-<<<<<<< HEAD
-  digitalWrite(FLYWHEEL_ON, LOW);
-  EndPulse();
-}
-
-void respondToShoot() {
-    digitalWrite(FLYWHEEL_ON, HIGH);
-=======
   numShot = 0;
   shoot = false;
   digitalWrite(PIN_OUT_FLYWHEEL_ON, LOW);
   EndPulse();
   sawShoot = false;
-  digitalWrite(PIN_OUT_SHOOTING_END, HIGH);
+  digitalWrite(PIN_OUT_SHOOTING_END, LOW);
 }
 
 void respondToShoot() {
     digitalWrite(PIN_OUT_FLYWHEEL_ON, HIGH);
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f
+    delay(250);
     if(IsPulseFinished()){
       pulses_done = true;
     }
@@ -134,3 +119,12 @@ void respondToShoot() {
     }
 }
 
+void armEye() {
+   myservo.write(servo_angle);
+   turn_servo = false;
+}
+
+void retractEye() {
+  myservo.write(-servo_angle);
+  turn_servo = true;
+}

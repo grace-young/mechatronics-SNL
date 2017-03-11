@@ -1,37 +1,30 @@
 #include <Timers.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
 
 #define MotorControlPin 2
 #define MotorSpeedControlPin 3
 #define COMMS_OUT_TO_BRAIN 9
 
-
 #define TIME_INTERVAL      500
 #define TIMER_0            0
 
-#define WHEEL_FOUR_L 4
-#define WHEEL_FOUR_R A2
+#define WHEEL_ONE_L 7
+#define WHEEL_ONE_R 8
 
 #define WHEEL_TWO_L A1
 #define WHEEL_TWO_R A0
 
-#define WHEEL_THREE_L 12
-#define WHEEL_THREE_R 13
+#define WHEEL_THREE_L 13
+#define WHEEL_THREE_R 12
 
-#define WHEEL_ONE_L 8
-#define WHEEL_ONE_R 7
+#define WHEEL_FOUR_L A2
+#define WHEEL_FOUR_R 4
 
 // each enable pin must be able to analogWrite to
-#define WHEEL_ONE_ENABLE     3
+#define WHEEL_ONE_ENABLE     10
 #define WHEEL_TWO_ENABLE     6
 #define WHEEL_THREE_ENABLE   11
 #define WHEEL_FOUR_ENABLE    5
-
-#define LED1  2
-#define LED2  3
-#define LED3  9
-#define LED4  A3
 
 #define LIMIT_ON_ANALOG      255
 
@@ -50,6 +43,10 @@
 #define    ACC_FULL_SCALE_16_G       0x18
 //Gyro stuff ends
 
+//commands to Brain 
+#define   GYRO_NEGATIVE             20
+#define   GYRO_POSITIVE             40
+
 static int motor_speed1= 155;
 static int motor_speed2= 203;  
 static int motor_speed3= 165;  
@@ -62,24 +59,21 @@ static int motor_speed4_fast= 250;
 
 // these used to be the normal values, but 
 // now they are the fast ones.
-static int motor_speed1_normal= 85;
-static int motor_speed2_normal= 85;  
-static int motor_speed3_normal= 85;  
-static int motor_speed4_normal= 85;
+static int motor_speed1_normal= 150;
+static int motor_speed2_normal= 150;  
+static int motor_speed3_normal= 150;  
+static int motor_speed4_normal= 150;
 
-static int motor_speed1_slow= 90; // this was 80
-static int motor_speed2_slow= 90;  // then it was 75
-static int motor_speed3_slow= 90;  
-static int motor_speed4_slow= 90; // might have to do fancy rev thing
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-=======
+static int motor_speed1_slow= 100; // this was 80
+static int motor_speed2_slow= 100;  // then it was 75
+static int motor_speed3_slow= 100;  
+static int motor_speed4_slow= 100; // might have to do fancy rev thing
 
 
 volatile int pwm_value_motor_control = 0;
 volatile int prev_time_motor_control = 0;
 volatile int pwm_value_motor_speed = 0;
 volatile int prev_time_motor_speed = 0;
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
 
 unsigned long time_last_printed;
 
@@ -95,60 +89,8 @@ long int cpt=0; //count
 bool statedPositive;
 //Gyro variables end
 
-// NEW CONSTANTS
-const char COMM_MOTOR_NORMAL  = 'a';
-const char COMM_MOTOR_SLOW = 'b';
-const char COMM_MOTOR_FAST = 'c';
-const char COMM_ZERO_GYRO = 'd';
-
-const char COMM_MOTOR_COAST_STOP = 'e';
-const char COMM_MOTOR_FORWARD = 'f';
-const char COMM_MOTOR_BACKWARD = 'g';
-const char COMM_MOTOR_LEFT = 'h';
-const char COMM_MOTOR_RIGHT = 'i';
-const char COMM_MOTOR_SPIN_CC = 'j';
-const char COMM_MOTOR_SPIN_CL = 'k';
-const char COMM_MOTOR_STOP = 'l';
-const char COMM_MOTOR_BACKWARD_JIGGLE = 'm';
-
-
-//commands to Brain 
-const char GYRO_NEGATIVE              = 'n';
-const char GYRO_POSITIVE              = 'o';
-
-
-/*
-Not all pins on the Mega and Mega 2560
-support change interrupts, so only the 
-following can be used for RX: 10, 11, 12, 
-13, 14, 15, 50, 51, 52, 53, A8 (62), A9 (63),
-A10 (64), A11 (65), A12 (66), A13 (67),
-A14 (68), A15 (69).
-*/
-
-// this is RX
-#define PIN_COMMS_IN_HERE_RX    0 // number goes here!!!
-// this is TX
-//#define PIN_COMMS_OUT_HERE_TX   9 // number goes here!!!!
-
-//SoftwareSerial bodySerial(PIN_COMMS_IN_HERE_RX, PIN_COMMS_OUT_HERE_TX);
-
 void setup() {
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-    SetupPins();
-  // this is the sending serial
-  Serial.begin(57600); // 115200 USE FASTEST SETTING FOR COMMS
-  /*while(!Serial){
-      ; // wait for serial port to connect. Needed for native USB port only
-      // from example
-  }
-// do Serial's have to be at different rates??
-  bodySerial.begin(4800); // why is this low?????
-  // this is the receiving serial
-  */
-=======
-  Serial.begin(57600);
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
+  Serial.begin(9600);
   Wire.begin();
 
   //Gyro Configuration
@@ -157,12 +99,11 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
   // Configure accelerometers range
   I2CwriteByte(MPU9250_ADDRESS,28,ACC_FULL_SCALE_16_G);
   
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-=======
   SetupPins();
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
   jiggleClockwise = true;
   
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
@@ -177,15 +118,9 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-//  decodeSignalsFromBrain();
   //goForwardCrossDir();
-//  communicateGyroInfo();
-=======
   decodeSignalsFromBrain();
-  //goForwardCrossDir();
   communicateGyroInfo();
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
   
 ////////////GYRO
 
@@ -205,8 +140,6 @@ void loop() {
 //  int16_t ay=-(Buf[2]<<8 | Buf[3]);
 //  int16_t az=Buf[4]<<8 | Buf[5];
 
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-=======
 //  Serial.print("ax ");
 //  Serial.print(ax, DEC);
 //
@@ -223,14 +156,13 @@ void loop() {
 //  Serial.print (gy,DEC);
 //  Serial.print ("\t");
 //  Serial.print("z ");
-//  Serial.print(gz,DEC);  
+//  Serial.println(gz,DEC);  
 //  Serial.print ("\t");
 //  Serial.print (prevZ);
 //  Serial.print("   ");
   // 100 was nice 
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
-//  Serial.print("orientation");
-//  Serial.println(orientation);
+ //Serial.print("orientation");
+  //Serial.println(orientation);
   flag = false;
   if ( (abs(gx) > 600 || abs(gy) > 600)) {
     flag = true;
@@ -257,36 +189,20 @@ void loop() {
 ////////////GYRO END
 }
 
-void serialEvent(){
-  while (Serial.available()) {
-    // get the new byte:
-    char inChar = (char)Serial.read();
-    decodeSignalsFromBrain(inChar);   
-    }
-}
-
-
-
-
 void updateMotorSpeeds(){
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
   analogWrite(WHEEL_FOUR_ENABLE, motor_speed4);
+//  Serial.println("Wrote speed:");
+//  Serial.println(motor_speed1);  
 }
 
-void decodeSignalsFromBrain(char comm_state){
-  /*char comm_state = 'z';
-  if(bodySerial.available()){
-     comm_state = bodySerial.read(); 
-     //Serial.println(comm_state);
-  }
-  */
+void decodeSignalsFromBrain(){
+  int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 11);
 
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-  switch(comm_state){
-    case COMM_MOTOR_NORMAL:
-=======
+
   // 20 --> 0 normal speed
   // 40 --> 1 slow speed
   // 60 --> 2 fast speed 
@@ -297,64 +213,29 @@ void decodeSignalsFromBrain(char comm_state){
   switch(motorspeed){
     case 0://20
       //Serial.println("0");
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
       motor_speed1 = motor_speed1_normal;
       motor_speed2 = motor_speed2_normal;
       motor_speed3 = motor_speed3_normal;
       motor_speed4 = motor_speed4_normal;
       break;
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-    case COMM_MOTOR_SLOW:
-=======
     case 1://40
       //Serial.println("1");
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
       motor_speed1 = motor_speed1_slow;
       motor_speed2 = motor_speed2_slow;
       motor_speed3 = motor_speed3_slow;
       motor_speed4 = motor_speed4_slow;
       break;
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-    case COMM_MOTOR_FAST:
-=======
     case 2://60
       //Serial.println("2");
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
       motor_speed1 = motor_speed1_fast;
       motor_speed2 = motor_speed2_fast;
       motor_speed3 = motor_speed3_fast;
       motor_speed4 = motor_speed4_fast;
       break;
-     case COMM_ZERO_GYRO:
+     case 3:
+      //Serial.println("2");
       orientation = 0;
       break;
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-    case COMM_MOTOR_COAST_STOP:
-      coastStopAll();
-      break;
-    case COMM_MOTOR_FORWARD:
-      goForwardCrossDir();
-      break;
-    case COMM_MOTOR_BACKWARD:
-      goBackwardsCrossDir();
-      break;
-    case COMM_MOTOR_LEFT:
-      goLeftCrossDir();
-      break;
-    case COMM_MOTOR_RIGHT:
-      goRightCrossDir();
-      break;
-    case COMM_MOTOR_SPIN_CC:
-      rotateCounterClockwise();
-      break;
-    case COMM_MOTOR_SPIN_CL:
-      rotateClockwise();
-      break;
-    case COMM_MOTOR_STOP:
-      stopAllWheels();
-      break;
-    case COMM_MOTOR_BACKWARD_JIGGLE: 
-=======
     default:
       //Serial.println("default");
       motor_speed1 = motor_speed1_slow;
@@ -394,21 +275,39 @@ void decodeSignalsFromBrain(char comm_state){
       stopAllWheels();
       break;
     case 8: //180
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
       goBackwardsCrossDirJiggle();
       break;
     default:
+      coastStopAll();
       break;
   }
+}
+
+void findFreqMotorControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), freqCountMotorControl, FALLING);
+  prev_time_motor_control = micros();
+}
+void freqCountMotorControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
+  pwm_value_motor_control = micros() - prev_time_motor_control;
+//  Serial.print("MOTOR CONTROL ");
+//  Serial.println(pwm_value_motor_control);
+}
+
+void findFreqMotorSpeedControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), freqCountMotorSpeedControl, FALLING);
+  prev_time_motor_speed = micros();
+}
+void freqCountMotorSpeedControl(){
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
+  pwm_value_motor_speed = micros() - prev_time_motor_speed;
+//   Serial.print("MOTOR SPEED ");
+//  Serial.println(pwm_value_motor_speed);
 }
 
 void SetupPins() {  
   pinMode(MotorControlPin, INPUT);
   pinMode(MotorSpeedControlPin, INPUT);
-  
-  pinMode(PIN_COMMS_IN_HERE_RX, INPUT);
-  //pinMode(PIN_COMMS_OUT_HERE_TX, OUTPUT);
-  
   
   pinMode(WHEEL_ONE_ENABLE, OUTPUT);
   pinMode(WHEEL_TWO_ENABLE, OUTPUT);
@@ -426,11 +325,6 @@ void SetupPins() {
 
   pinMode(WHEEL_ONE_L, OUTPUT);
   pinMode(WHEEL_ONE_R, OUTPUT);
-
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  pinMode(LED4, OUTPUT);
 }
 
 void coastStopAll(){
@@ -525,18 +419,18 @@ void goLeftOmniDir(){
   turnWheelOneCounterClockwise();
 }
 
-void rotateClockwise() {
-  turnWheelFourCounterClockwise();
-  turnWheelTwoCounterClockwise();
-  turnWheelThreeCounterClockwise();
-  turnWheelOneCounterClockwise();
-}
-
 void rotateCounterClockwise() {
   turnWheelFourClockwise();
   turnWheelTwoClockwise();
   turnWheelThreeClockwise();
   turnWheelOneClockwise();
+}
+
+void rotateClockwise() {
+  turnWheelFourCounterClockwise();
+  turnWheelTwoCounterClockwise();
+  turnWheelThreeCounterClockwise();
+  turnWheelOneCounterClockwise();
 }
 
 //Wheel Four
@@ -626,21 +520,34 @@ void stopWheelFour() {
   digitalWrite(WHEEL_FOUR_L, HIGH);
 }
 
-/*
-void communicateGyroInfo(){
-  if(orientation <= 0){
-<<<<<<< HEAD:body_serial_comms/body_serial_comms.ino
-    Serial.write(GYRO_NEGATIVE);
-  } else if(orientation > 0){
-    Serial.write(GYRO_POSITIVE);
-=======
-    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_NEGATIVE);
-  } else if(orientation > 0){
-    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_POSITIVE);
->>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f:body_with_start_sequence/body_with_start_sequence.ino
+void serialEvent(){
+  while (Serial.available()) {
+    char inChar = (char)Serial.read();
+    Serial.println(inChar);
+      if (inChar == 'L' || inChar == 'l') {
+          // increase speed
+          if(motor_speed1 + 10 <= LIMIT_ON_ANALOG){
+             motor_speed1 = motor_speed1 + 10;
+          }
+      }
+      else if (inChar == 'k' || inChar == 'K') {
+          // decrease speed
+          if(motor_speed1 - 10 >= 0){
+            motor_speed1 = motor_speed1 - 10;
+          }
+    }
   }
 }
-*/
+
+void communicateGyroInfo(){
+  if(orientation <= 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_NEGATIVE);
+    //Serial.println("negative");
+  } else if(orientation > 0){
+    analogWrite(COMMS_OUT_TO_BRAIN,GYRO_POSITIVE);
+    //Serial.println("positive");
+  }
+}
 
 //Gyro Functions
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)

@@ -662,6 +662,7 @@ void SetupPins(){
   pinMode(PIN_SENSOR_D_1, INPUT);
   pinMode(PIN_SENSOR_D_2, INPUT);
   pinMode(PIN_SENSOR_E, INPUT);
+  
 
   pinMode(PIN_RED_DEBUG, OUTPUT);
   pinMode(PIN_GREEN_DEBUG, OUTPUT);
