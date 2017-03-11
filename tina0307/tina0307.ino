@@ -1,15 +1,28 @@
 #include <Timers.h>
+#include <Pulse.h>
 
 #define PIN_SENSOR_A 7 
 #define PIN_SENSOR_B_1 5
 #define PIN_SENSOR_C 8
 #define PIN_SENSOR_D_1 13
 #define PIN_SENSOR_E 12
-
-// need pins for these:
 #define PIN_SENSOR_B_2 6
 #define PIN_SENSOR_D_2 11
 
+// STEPPER SHIT
+
+#define FLYWHEEL_ON A1
+#define PULSE_STEPPER 7
+#define STEPPER_PERIOD 200
+
+#define STEPPER_WAIT_TIMER 0
+#define STEPPER_TIME_INTERVAL 1000
+
+
+#define PIN_RED2_DEBUG A2
+#define PIN_RED_DEBUG A3
+#define PIN_GREEN_DEBUG A4
+#define PIN_YELLOW_DEBUG A5
 
 #define PIN_COMMS_IN_GYRO        2
 #define PIN_OUTPUT_MOTOR_CONTROL 3
@@ -21,7 +34,11 @@
 #define TIME_INTERVAL      500
 #define JIGGLE_INTERVAL    400
 #define TIME_INTERVAL_2    1000
-#define TIME_BETWEEN_LINE_TAPE_READS  250
+#define TIME_BETWEEN_LINE_TAPE_READS  500
+#define TIME_MOVE_RIGHT    5000
+#define TIME_TO_PIVOT      250
+
+#define TIME_TO_PAUSE      1250
 
 
 #define TIMER_0            0
@@ -46,16 +63,41 @@
 
 static bool startGyroNegative = false;
 
+static bool pivot_CC;
+
 volatile int prev_time_comms = 0;
 volatile int pwm_value_comms = 0;
 
 static unsigned long fake_timer;
+static unsigned long pivot_timer;
+
+static int shots_fired = 0;
+static int n = 0;
 static int numLinesCounted = 0;
+static int  shoot_count;
+
+//shooter bullshit
+
+#define PULSE_STEPPER 4
+#define FLYWHEEL_ON A2
+#define STEPPER_PERIOD 200
+
+#define STEPPER_WAIT_TIMER 0
+#define STEPPER_TIME_INTERVAL 1000
+
+bool shoot = false;
+bool pulses_done = false;
+bool calibrate_tick = true;
+
+static int NUM_PULSES = 29;
+const int CALIBRATE_COUNT = 4;
+static int count = 1;
 
 typedef enum {
   WAIT, START, ORIENTATION_STRAIGHT,
-  AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
-  CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, DONE
+  FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
+  CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, PIVOT_SHOOT, 
+  ACTUALLY_SHOOT, ALIGN_AFTER_PIVOT, DONE, SHOOT, BLOCK, YOLO
 } States_t;
 
 States_t state;
@@ -68,7 +110,7 @@ unsigned char isTapeOn_E;
 static bool alignLeft;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(57600);
   //TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   isTapeOn_A = false;
   isTapeOn_B = false;
@@ -82,14 +124,13 @@ void setup() {
   SetupPins();
   
   alignLeft=true;
+  pivot_CC = false;
   
   TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
 
   //Interupt for reading the Comms from gyro
    attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), findFreqComms, RISING);
    fake_timer = millis();
-
-   
 }
 
 
@@ -97,7 +138,10 @@ void loop() {
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
-  //Serial.println(state);
+    Serial.print("numLines");
+  Serial.print(numLinesCounted);
+  Serial.print(" state");
+  Serial.println(state);
   if(TMRArd_IsTimerExpired(TIMER_0)){
     String toprint = "state: " + (String)state + "\nA: " + (String)isTapeOn_A + " B:"+(String)isTapeOn_B + " C:" + (String)isTapeOn_C + " D:" + (String)isTapeOn_D + " E:" + (String)isTapeOn_E;
     //Serial.println(state);
@@ -106,8 +150,8 @@ void loop() {
 }
 
 void CheckGlobalStates(void){
-  Serial.print("STATE: ");
-  Serial.println(state);
+  //Serial.print("STATE: ");
+  //Serial.println(state);
   switch (state){
     case WAIT:
       RespToWait();
@@ -117,6 +161,9 @@ void CheckGlobalStates(void){
       break;
     case ORIENTATION_STRAIGHT:
       RespOrientationStraight();
+      break;
+    case FOUND_T_LINE:
+      RespFoundTLine();
       break;
     case AT_BACK_OF_BOX:
       RespAtBackOfBox();
@@ -135,12 +182,37 @@ void CheckGlobalStates(void){
       break;
     case ALIGN_TO_SHOOT:
       RespAlignToShoot();
+      break;
+    case PIVOT_SHOOT:
+      RespPivotShoot();
+      break;
+    case ACTUALLY_SHOOT:
+      RespActuallyShoot();
+      break;
+    case ALIGN_AFTER_PIVOT:
+      RespAlignAfterPivot();
+      break;
     case DONE:
       RespDone();
+      break;
+    case SHOOT:
+      RespShoot();
+      break;
+    case BLOCK:
+      RespBlock();
+      break;
+    case YOLO:
+      RespYolo();
+      break;
     default:
       break;
   }
   
+}
+
+void RespYolo(){
+  delay(1000);
+  makeMotorsStop();
 }
 
 void findFreqComms(){
@@ -161,107 +233,135 @@ int decodeSignalFromComms(){
    */
 //   Serial.print(pwm_value_comms);
 //   Serial.print(" ");
-//   Serial.print(state);
-   Serial.print("commsState ");
-   Serial.println(state);
+////   Serial.print(state);
   return commsState;
 }
 
-void RespPauseAtLine(){
-  if(millis()-fake_timer > 1000){
-      // we have waited long enough
-      if(numLinesCounted == 2){
-         state = CROSSED_TWO_LINES;
-         fake_timer = millis(); 
-         makeMotorsMoveForward();
-      }
-      else if(numLinesCounted == 1){
-         state = CROSSED_ONE_LINE;
-         fake_timer = millis();         
-        makeMotorsMoveForward();
-      }
-      else if(numLinesCounted == 3){
-         state = CROSSED_THREE_LINES;
-         fake_timer = millis(); 
-         makeMotorsStop();
-      }
-   } 
-}
 
 void RespDone(){
-   makeMotorsStop(); 
+   makeMotorsStop();
 }
 
 void RespAlignToShoot(){
-  Serial.println("SHOOOOOOTING");
   // if we read b, c, & d, we are good
-  if(ReadTapeSensor_B_1() && ReadTapeSensor_C() && ReadTapeSensor_D_1()){
+if(ReadTapeSensor_B_1() && ReadTapeSensor_B_2() && ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_D_2()){
      // WE CAN SHOOT
-    Serial.println("GOING TO DONE");
-    state = DONE;
+    digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, HIGH);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+//    state = PIVOT_SHOOT;
+    pivot_CC = true;
     makeMotorsStop(); 
+    pivot_timer = millis();
   }
-  else if(ReadTapeSensor_C() && ReadTapeSensor_B_1() && !ReadTapeSensor_D_1()){
-    Serial.println("read C & B & not D");
+/*  else if(ReadTapeSensor_C() && ReadTapeSensor_B_1() && !ReadTapeSensor_D_1()){
+  digitalWrite(PIN_YELLOW_DEBUG, LOW);
+   digitalWrite(PIN_GREEN_DEBUG, LOW);
+    digitalWrite(PIN_RED_DEBUG, HIGH);
   } 
   else if (ReadTapeSensor_C() && !ReadTapeSensor_B_1() && ReadTapeSensor_D_1()){
-    Serial.println("read C & D & not B");
-  }else if(ReadTapeSensor_C() && !ReadTapeSensor_B_1() && !ReadTapeSensor_D_1){
+  digitalWrite(PIN_YELLOW_DEBUG, LOW);
+   digitalWrite(PIN_GREEN_DEBUG, LOW);
+    digitalWrite(PIN_RED_DEBUG, HIGH);
+  }*/
+  else{ // if(ReadTapeSensor_C() && !ReadTapeSensor_B_1() && !ReadTapeSensor_D_1){
      // NOT ALIGNED
+
      if(alignLeft){
         // trying to turn counter clockwise
-        makeMotorsSpinCC();        
-        Serial.println("spinning counter clockwise");
+        makeMotorsSpinCC();  
+        digitalWrite(PIN_RED_DEBUG, LOW);
+        digitalWrite(PIN_YELLOW_DEBUG, LOW);
+        digitalWrite(PIN_GREEN_DEBUG, LOW);      
         if (millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
           // turn the other way
-          Serial.println("tried to align left");
           alignLeft = false;
           fake_timer = millis();
         } 
      } else {
         makeMotorsSpinCL();
-        Serial.println("spinning clockwise");
+        digitalWrite(PIN_GREEN_DEBUG, LOW);
+        digitalWrite(PIN_YELLOW_DEBUG, LOW);
+        digitalWrite(PIN_RED_DEBUG, HIGH);
         if (millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
           // turn the other way
           // WE ARE FUCKED IF STILL CAN'T FIND
           alignLeft = true;
           fake_timer = millis();
-          Serial.println("FUCKED");
+          //Serial.println("FUCKED");
         } 
      }
   }
-  
 }
+
+
 
 void RespCountedOneLine(){
    // keep going forward 
+  // digitalWrite(PIN_GREEN_DEBUG, HIGH);
+    
    if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
      // we aren't reading the same line 
-     if(ReadTapeSensor_C()){
-       state = ALIGN_TO_SHOOT;
+     if(ReadTapeSensor_B_1()){
+      digitalWrite(PIN_GREEN_DEBUG, HIGH);
+      digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+        state=SHOOT;
+        //change back 
+//       state = ALIGN_TO_SHOOT;
        fake_timer = millis();
        numLinesCounted = 2;
        makeMotorsStop();
      }
    }
+}
+
+void RespShoot(){
+  //change this shit right here
+  fake_timer=millis();
+   makeMotorsStop(); 
+
+  if(shoot_count < 3){
+    respondToShoot();
+  }
+  else{
+    // DONE SHOOTING
+    shoot_count = 0;
+    endShoot();
+    makeMotorSpeedNormal();
+    makeMotorsMoveForward();
+   digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, HIGH);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+    if (numLinesCounted<=3){
+      state=PAUSE_AT_LINE;
+      makeMotorsMoveForward();
+      fake_timer=millis();
+    } else { 
+      state=BLOCK;
+      fake_timer = millis();
+      makeMotorsMoveRight();
+    }
+  }
 }
 
 void RespCountedTwoLines(){
    if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
      // we aren't reading the same line 
-     if(ReadTapeSensor_C()){
-       state = PAUSE_AT_LINE;
-       fake_timer = millis();
-       numLinesCounted = 2;
+     if(ReadTapeSensor_B_1()){
+      state=SHOOT;
+      //changed thiss
+//       state = ALIGN_TO_SHOOT;
+       numLinesCounted = 3;
        makeMotorsStop();
+       fake_timer = millis();
      }
    }
 }
 
 void RespCountedThreeLines(){
-  makeMotorsStop();
+  makeMotorsMoveRight();
   /*
   if(millis() = fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
@@ -276,20 +376,13 @@ void RespCountedThreeLines(){
    }*/
 }
 
-void RespAtBackOfBox(){
-  // AT BACK OF BOX
-  // could try to slow motors down here afer a little bit
-    makeMotorsMoveForward();
-    makeMotorSpeedNormal(); // could be slow
-    if (ReadTapeSensor_C()){
-      state = CROSSED_ONE_LINE;
-      fake_timer = millis();
-      numLinesCounted = 1;
-    }
-}
-
 void RespToWait(){
   makeMotorsCoastStop();
+  /*
+   * 0 - gyro negative
+   * 1 - gyro positive
+   */
+  
   if(decodeSignalFromComms() == 0){
       startGyroNegative = true;
   }else{
@@ -304,13 +397,21 @@ void RespToStart(){
     // speed used to be slow but now normal
    //analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_NORMAL); 
    makeMotorSpeedNormal();
-  if(startGyroNegative && (decodeSignalFromComms() == 0)){
-//    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
-    makeMotorsSpinCL();
-  } else if(!startGyroNegative && (decodeSignalFromComms() == 1)){
-    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
-    makeMotorsSpinCC();
+  /*
+   * 0 - gyro negative
+   * 1 - gyro positive
+   */
+   int comm_ret = decodeSignalFromComms();
+  if(startGyroNegative && (comm_ret == 0)){
+    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+    digitalWrite(PIN_GREEN_DEBUG, LOW);
+    //makeMotorsSpinCL();
+  } else if(!startGyroNegative && (comm_ret == 1)){
+    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+    //makeMotorsSpinCC();
   } else{
+    digitalWrite(PIN_YELLOW_DEBUG, LOW);
     state = ORIENTATION_STRAIGHT;
     fake_timer = millis();
   }
@@ -322,7 +423,7 @@ void RespOrientationStraight(){
   makeMotorSpeedFast();
 
   makeMotorsJiggleBackwards();
-  
+ 
   // go backward for 2 seconds
   if( millis() - fake_timer >= 2000){
     // go backward
@@ -331,8 +432,118 @@ void RespOrientationStraight(){
   }
 }
 
+void RespAtBackOfBox(){
+    makeMotorSpeedNormal();
+    makeMotorsMoveForward();
+    //was tape sensor c
+    if (ReadTapeSensor_B_1()){
+      state = PAUSE_AT_LINE;
+      numLinesCounted = 1;
+      fake_timer = millis();
+    }
+}
+
+void RespPauseAtLine(){
+  digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, LOW);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+  if(millis()-fake_timer > TIME_TO_PAUSE){
+      // we have waited long enough
+      if(numLinesCounted == 2){ // || numLinesCounted == 3){
+         state = CROSSED_TWO_LINES;
+         makeMotorSpeedNormal();
+         makeMotorsMoveForward();
+         fake_timer = millis(); 
+      }
+      else if(numLinesCounted == 1){ //|| numLinesCounted == 2){
+         state = CROSSED_ONE_LINE;
+         
+         makeMotorSpeedNormal();      
+        makeMotorsMoveForward();
+        fake_timer = millis();   
+      }
+      else if(numLinesCounted == 3){
+         state = CROSSED_THREE_LINES;
+         
+         makeMotorSpeedNormal();
+         makeMotorsMoveForward();
+         fake_timer = millis(); 
+      }
+   } 
+}
+
+
+void setupPulses(){
+
+  EndPulse(); // stops the old speed pulses 
+  InitPulse(PULSE_STEPPER, STEPPER_PERIOD); // set new pulses
+  count++;
+  shoot_count++;
+  if (count == CALIBRATE_COUNT && calibrate_tick) {
+    calibrate_tick = false;
+    count = 1;
+    NUM_PULSES--;
+    Serial.print("Subtracted 1: ");
+    Serial.println(NUM_PULSES);
+  } else if (count == CALIBRATE_COUNT && !calibrate_tick) {
+    calibrate_tick = true;
+    count = 1;
+    NUM_PULSES++;
+    Serial.print("Added 1: ");
+    Serial.println(NUM_PULSES);
+  }
+  Serial.print("Count: ");
+  Serial.println(count);
+  Pulse(NUM_PULSES); 
+  pulses_done = false;
+  TMRArd_InitTimer(STEPPER_WAIT_TIMER, STEPPER_TIME_INTERVAL);
+}
+
+void endShoot(){
+  digitalWrite(FLYWHEEL_ON, LOW);
+  EndPulse();
+}
+
+void respondToShoot() {
+    digitalWrite(FLYWHEEL_ON, HIGH);
+    if(IsPulseFinished()){
+      pulses_done = true;
+    }
+    if(TMRArd_IsTimerExpired(STEPPER_WAIT_TIMER)){
+      setupPulses();
+    }
+}
+
+
+
+void RespBlock(){
+  if(millis()-fake_timer > TIME_MOVE_RIGHT){
+    state = DONE;
+    makeMotorsStop();
+  }
+  
+}
+
+
+
 void RespFoundTLine(){
   makeMotorsStop();
+}
+
+void RespLeftEndLine(){
+  // won't get here right now
+  if(isTapeOn_B && isTapeOn_C && isTapeOn_D){
+    makeMotorsStop();
+    state = FOUND_T_LINE;
+  }
+}
+
+void RespRightEndLine(){
+  if(isTapeOn_B && isTapeOn_C && isTapeOn_D){
+    // now drive left
+    makeMotorsMoveLeft();
+    state = FOUND_T_LINE;
+  }
 }
 
 
@@ -444,10 +655,20 @@ void SetupPins(){
   pinMode(PIN_SENSOR_D_1, INPUT);
   pinMode(PIN_SENSOR_D_2, INPUT);
   pinMode(PIN_SENSOR_E, INPUT);
+
+  pinMode(PIN_RED_DEBUG, OUTPUT);
+  pinMode(PIN_GREEN_DEBUG, OUTPUT);
+  pinMode(PIN_YELLOW_DEBUG, OUTPUT);
+  pinMode(PIN_RED2_DEBUG, OUTPUT);
+  
   pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
   pinMode(PIN_OUTPUT_SPEED_CONTROL, OUTPUT);
   pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
   pinMode(PIN_GAME_START, INPUT_PULLUP);
+
+  pinMode(PULSE_STEPPER, OUTPUT);
+  pinMode(FLYWHEEL_ON, OUTPUT);
+
 }
 
 /* ====================================================================
@@ -828,3 +1049,72 @@ void UpdateTapeSensorVars(void){
       // 30
    }     
 }
+
+void RespAlignAfterPivot(){
+  // before, we turned for TIME_TO_PIVOT amount of time CL
+  if(millis() - pivot_timer >= TIME_TO_PIVOT){
+    // stop
+    makeMotorsStop();
+    // now move on
+    state = PAUSE_AT_LINE;
+    fake_timer = millis();
+  }
+  
+}
+
+void RespActuallyShoot(){
+  makeMotorsStop();
+  // SHOOT HERE
+  if (shots_fired == 1){
+    pivot_timer = millis();
+    state = PIVOT_SHOOT;
+    digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, HIGH);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+  } else {
+    // WE HAVE SHOT BOTH OF THEM NOW MOVE ON.
+    // we have to turn ourselves around again
+    state = ALIGN_AFTER_PIVOT;
+    pivot_timer = millis();
+    makeMotorSpeedNormal();
+    makeMotorsSpinCC(); // to un-pivot
+    digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, LOW);
+    digitalWrite(PIN_YELLOW_DEBUG, HIGH);
+  }
+}
+
+void  RespPivotShoot(){
+   // motors stopped from align to shoot
+   // turn tiny bit left
+   if (pivot_CC){
+    digitalWrite(PIN_RED_DEBUG, LOW);
+    digitalWrite(PIN_GREEN_DEBUG, HIGH);
+    digitalWrite(PIN_YELLOW_DEBUG, LOW);
+    makeMotorSpeedFast();
+     makeMotorsSpinCC();
+     if(millis() - pivot_timer > TIME_TO_PIVOT){
+        // actually shoot
+        pivot_CC = false;
+        state = ACTUALLY_SHOOT;
+        shots_fired = 1;
+        makeMotorsStop();
+     }
+   } else {
+    digitalWrite(PIN_RED_DEBUG, HIGH);
+    digitalWrite(PIN_GREEN_DEBUG, LOW);
+    digitalWrite(PIN_YELLOW_DEBUG, LOW);
+    makeMotorSpeedFast();
+     makeMotorsSpinCL();
+     if(millis() - pivot_timer > TIME_TO_PIVOT * 2){
+        // actually shoot
+        // times 2 because have to unrotate ourselves
+        pivot_CC = false;
+        state = ACTUALLY_SHOOT;
+        shots_fired = 2;
+        makeMotorsStop();
+     }
+   }
+   // turn tiny bit right
+}
+

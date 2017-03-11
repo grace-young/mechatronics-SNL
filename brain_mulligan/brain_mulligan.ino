@@ -14,7 +14,7 @@
 #define PIN_COMMS_IN_GYRO        2
 #define PIN_OUTPUT_MOTOR_CONTROL 3
 #define PIN_OUTPUT_SPEED_CONTROL 9
-#define PIN_INPUT_BUMPER         A0
+#define PIN_INPUT_BUMPER A0
 
 #define PIN_GAME_START           10
 
@@ -42,7 +42,7 @@
 #define COMM_MOTOR_SPIN_CC 120
 #define COMM_MOTOR_SPIN_CL 140
 #define COMM_MOTOR_STOP 160
-#define COMM_MOTOR_BACKWARD_JIGGLE 180
+
 
 static bool startGyroNegative = false;
 
@@ -50,12 +50,13 @@ volatile int prev_time_comms = 0;
 volatile int pwm_value_comms = 0;
 
 static unsigned long fake_timer;
+
 static int numLinesCounted = 0;
 
 typedef enum {
   WAIT, START, ORIENTATION_STRAIGHT,
-  AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
-  CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, DONE
+  FOUND_T_LINE, AT_BACK_OF_BOX, CROSSED_ONE_LINE, CROSSED_TWO_LINES, 
+  CROSSED_THREE_LINES, PAUSE_AT_LINE, ALIGN_TO_SHOOT, SHOOT, DONE
 } States_t;
 
 States_t state;
@@ -68,7 +69,7 @@ unsigned char isTapeOn_E;
 static bool alignLeft;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(19200);
   //TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
   isTapeOn_A = false;
   isTapeOn_B = false;
@@ -77,8 +78,8 @@ void setup() {
   isTapeOn_E = false;
   state = WAIT;
   
-  //makeMotorsMoveForward();
-  makeMotorSpeedNormal();
+  makeMotorsMoveForward();
+
   SetupPins();
   
   alignLeft=true;
@@ -88,12 +89,11 @@ void setup() {
   //Interupt for reading the Comms from gyro
    attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), findFreqComms, RISING);
    fake_timer = millis();
-
-   
 }
 
 
 void loop() {
+  makeMotorSpeedNormal();
   UpdateTapeSensorVars();
   // we know the tape sensor values are right noe
   CheckGlobalStates();
@@ -118,6 +118,9 @@ void CheckGlobalStates(void){
     case ORIENTATION_STRAIGHT:
       RespOrientationStraight();
       break;
+    case FOUND_T_LINE:
+      RespFoundTLine();
+      break;
     case AT_BACK_OF_BOX:
       RespAtBackOfBox();
       break;
@@ -135,6 +138,8 @@ void CheckGlobalStates(void){
       break;
     case ALIGN_TO_SHOOT:
       RespAlignToShoot();
+    case SHOOT:
+      RespShoot();
     case DONE:
       RespDone();
     default:
@@ -159,11 +164,11 @@ int decodeSignalFromComms(){
    * 0 - gyro negative
    * 1 - gyro positive
    */
-//   Serial.print(pwm_value_comms);
-//   Serial.print(" ");
-//   Serial.print(state);
-   Serial.print("commsState ");
-   Serial.println(state);
+   Serial.print(pwm_value_comms);
+   Serial.print(" ");
+   Serial.print(state);
+   Serial.print(" ");
+   Serial.println(commsState);
   return commsState;
 }
 
@@ -192,22 +197,19 @@ void RespDone(){
    makeMotorsStop(); 
 }
 
+void RespShoot(){
+     makeMotorsStop(); 
+     delay(1000);
+     state = PAUSE_AT_LINE;
+}
+
 void RespAlignToShoot(){
-  Serial.println("SHOOOOOOTING");
   // if we read b, c, & d, we are good
-  if(ReadTapeSensor_B_1() && ReadTapeSensor_C() && ReadTapeSensor_D_1()){
+  if(ReadTapeSensor_B_1() && ReadTapeSensor_B_2() && ReadTapeSensor_C() && ReadTapeSensor_D_1() && ReadTapeSensor_D_2()){
      // WE CAN SHOOT
-    Serial.println("GOING TO DONE");
-    state = DONE;
+    state = PAUSE_AT_LINE;
     makeMotorsStop(); 
-  }
-  else if(ReadTapeSensor_C() && ReadTapeSensor_B_1() && !ReadTapeSensor_D_1()){
-    Serial.println("read C & B & not D");
-  } 
-  else if (ReadTapeSensor_C() && !ReadTapeSensor_B_1() && ReadTapeSensor_D_1()){
-    Serial.println("read C & D & not B");
-  }else if(ReadTapeSensor_C() && !ReadTapeSensor_B_1() && !ReadTapeSensor_D_1){
-     // NOT ALIGNED
+  } /*else  { // NOT ALIGNED 
      if(alignLeft){
         // trying to turn counter clockwise
         makeMotorsSpinCC();        
@@ -229,7 +231,7 @@ void RespAlignToShoot(){
           Serial.println("FUCKED");
         } 
      }
-  }
+  }*/
   
 }
 
@@ -238,8 +240,8 @@ void RespCountedOneLine(){
    if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
      // we aren't reading the same line 
-     if(ReadTapeSensor_C()){
-       state = ALIGN_TO_SHOOT;
+     if(ReadTapeSensor_B_1()){
+       state = SHOOT;
        fake_timer = millis();
        numLinesCounted = 2;
        makeMotorsStop();
@@ -251,8 +253,8 @@ void RespCountedTwoLines(){
    if(millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
       // fake timer there to make sure that 
      // we aren't reading the same line 
-     if(ReadTapeSensor_C()){
-       state = PAUSE_AT_LINE;
+     if(ReadTapeSensor_B_1()){
+       state = SHOOT;
        fake_timer = millis();
        numLinesCounted = 2;
        makeMotorsStop();
@@ -277,11 +279,8 @@ void RespCountedThreeLines(){
 }
 
 void RespAtBackOfBox(){
-  // AT BACK OF BOX
-  // could try to slow motors down here afer a little bit
     makeMotorsMoveForward();
-    makeMotorSpeedNormal(); // could be slow
-    if (ReadTapeSensor_C()){
+    if (ReadTapeSensor_B_1()){
       state = CROSSED_ONE_LINE;
       fake_timer = millis();
       numLinesCounted = 1;
@@ -305,10 +304,10 @@ void RespToStart(){
    //analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_NORMAL); 
    makeMotorSpeedNormal();
   if(startGyroNegative && (decodeSignalFromComms() == 0)){
-//    analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
+    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
     makeMotorsSpinCL();
   } else if(!startGyroNegative && (decodeSignalFromComms() == 1)){
-    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
+    //analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
     makeMotorsSpinCC();
   } else{
     state = ORIENTATION_STRAIGHT;
@@ -318,11 +317,7 @@ void RespToStart(){
 
 void RespOrientationStraight(){
   // stop
-  //analogWrite(PIN_OUTPUT_SPEED_CONTROL, 60);
-  makeMotorSpeedFast();
-
-  makeMotorsJiggleBackwards();
-  
+  makeMotorsMoveBackward();
   // go backward for 2 seconds
   if( millis() - fake_timer >= 2000){
     // go backward
@@ -333,6 +328,22 @@ void RespOrientationStraight(){
 
 void RespFoundTLine(){
   makeMotorsStop();
+}
+
+void RespLeftEndLine(){
+  // won't get here right now
+  if(isTapeOn_B && isTapeOn_C && isTapeOn_D){
+    makeMotorsStop();
+    state = FOUND_T_LINE;
+  }
+}
+
+void RespRightEndLine(){
+  if(isTapeOn_B && isTapeOn_C && isTapeOn_D){
+    // now drive left
+    makeMotorsMoveLeft();
+    state = FOUND_T_LINE;
+  }
 }
 
 
@@ -353,7 +364,7 @@ bool ReadTapeSensor_B_1(void){
 
 bool ReadTapeSensor_B_2(void){
     // 1 if read tape, 0 if not 
-    return !digitalRead(PIN_SENSOR_B_2);
+    return digitalRead(PIN_SENSOR_B_2);
 }
 
 bool ReadTapeSensor_C(void){
@@ -425,10 +436,6 @@ void makeMotorsMoveRight(){
 
 void makeMotorsMoveLeft(){
   analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_LEFT);
-}
-
-void makeMotorsJiggleBackwards(){
-  analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_BACKWARD_JIGGLE);
 }
 
 /* ====================================================================
@@ -828,3 +835,4 @@ void UpdateTapeSensorVars(void){
       // 30
    }     
 }
+
