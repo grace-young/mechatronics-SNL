@@ -111,8 +111,10 @@ const char COMM_MOTOR_BACKWARD_JIGGLE = 'm';
 void setup() {
     SetupPins();
   // this is the sending serial
-  Serial.begin(57600); // 115200 USE FASTEST SETTING FOR COMMS
-  
+  Serial.begin(4800); // 115200 USE FASTEST SETTING FOR COMMS
+//  while(!Serial.available()){
+//    ;
+//  }
   Wire.begin();
 
   //Gyro Configuration
@@ -190,11 +192,13 @@ void serialEvent(){
   while (Serial.available()) {
     // get the new byte:
     char inChar = (char)Serial.read();
-    decodeSignalsFromBrain(inChar);   
+    decodeSignalsFromBrain(inChar);
+    
+         digitalWrite(10,HIGH);
+         //delay(1000);
+        //Serial.println(inChar);
     }
 }
-
-
 
 
 void updateMotorSpeeds(){
@@ -228,6 +232,8 @@ void decodeSignalsFromBrain(char comm_state){
       orientation = 0;
       break;
     case COMM_MOTOR_COAST_STOP:
+      // pin to test wait
+      digitalWrite(10, HIGH);
       coastStopAll();
       break;
     case COMM_MOTOR_FORWARD:
@@ -259,7 +265,9 @@ void decodeSignalsFromBrain(char comm_state){
   }
 }
 
-void SetupPins() {    
+void SetupPins() {   
+  pinMode(10, OUTPUT);
+   
   pinMode(PIN_COMMS_IN_HERE_RX, INPUT);
   
   pinMode(WHEEL_ONE_ENABLE, OUTPUT);

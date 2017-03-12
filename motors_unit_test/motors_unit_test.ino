@@ -1,14 +1,14 @@
-#define WHEEL_ONE_L 8
-#define WHEEL_ONE_R 7
+#define WHEEL_ONE_L 7
+#define WHEEL_ONE_R 8
 
 #define WHEEL_TWO_L A1
 #define WHEEL_TWO_R A0
 
-#define WHEEL_THREE_L 12
-#define WHEEL_THREE_R 13
+#define WHEEL_THREE_L 13
+#define WHEEL_THREE_R 12
 
-#define WHEEL_FOUR_L 4
-#define WHEEL_FOUR_R A2
+#define WHEEL_FOUR_L A2
+#define WHEEL_FOUR_R 4
 
 // each enable pin must be able to analogWrite to
 #define WHEEL_ONE_ENABLE     10
@@ -25,7 +25,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
     //goRightCrossDir();
-    turnWheelOneClockwise();
+    goForwardCrossDir();
     /*turnWheelTwoClockwise();
     turnWheelFourCounterClockwise();
     coastStopWheelOne();
@@ -104,15 +104,15 @@ void goLeftCrossDir(){
 void rotateCounterClockwise() {
   turnWheelFourClockwise();
   turnWheelTwoClockwise();
-  turnWheelThreeCounterClockwise();
-  turnWheelOneCounterClockwise();
+  turnWheelThreeClockwise();
+  turnWheelOneClockwise();
 }
 
 void rotateClockwise() {
   turnWheelFourCounterClockwise();
   turnWheelTwoCounterClockwise();
-  turnWheelThreeClockwise();
-  turnWheelOneClockwise();
+  turnWheelThreeCounterClockwise();
+  turnWheelOneCounterClockwise();
 }
 
 /* =====================================
@@ -121,14 +121,14 @@ void rotateClockwise() {
 
 void turnWheelOneClockwise(){
   analogWrite(WHEEL_ONE_ENABLE, 200);
-  digitalWrite(WHEEL_ONE_R, HIGH);
-  digitalWrite(WHEEL_ONE_L, LOW);
+  digitalWrite(WHEEL_ONE_R, LOW);
+  digitalWrite(WHEEL_ONE_L, HIGH);
 }
 
 void turnWheelOneCounterClockwise(){
   analogWrite(WHEEL_ONE_ENABLE, 200);
-  digitalWrite(WHEEL_ONE_R, LOW);
-  digitalWrite(WHEEL_ONE_L, HIGH);
+  digitalWrite(WHEEL_ONE_R, HIGH);
+  digitalWrite(WHEEL_ONE_L, LOW);
 }
 
 /* =====================================
@@ -153,14 +153,14 @@ void turnWheelTwoCounterClockwise(){
 
 void turnWheelThreeClockwise(){
   analogWrite(WHEEL_THREE_ENABLE, 200);
-  digitalWrite(WHEEL_THREE_R, LOW);
-  digitalWrite(WHEEL_THREE_L, HIGH);
+  digitalWrite(WHEEL_THREE_R, HIGH);
+  digitalWrite(WHEEL_THREE_L, LOW);
 }
 
 void turnWheelThreeCounterClockwise(){
   analogWrite(WHEEL_THREE_ENABLE, 200);
-  digitalWrite(WHEEL_THREE_R, HIGH);
-  digitalWrite(WHEEL_THREE_L, LOW);
+  digitalWrite(WHEEL_THREE_R, LOW);
+  digitalWrite(WHEEL_THREE_L, HIGH);
 }
 
 /* =====================================

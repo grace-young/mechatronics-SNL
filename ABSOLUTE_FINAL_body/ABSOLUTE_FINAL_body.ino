@@ -118,6 +118,7 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
+  Serial.println(millis());
   //goForwardCrossDir();
   decodeSignalsFromBrain();
   communicateGyroInfo();

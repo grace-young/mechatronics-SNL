@@ -2,12 +2,13 @@
 #include <Pulse.h>
 
 #define PIN_SENSOR_A 7 
-#define PIN_SENSOR_B_1 5
+#define PIN_SENSOR_B_1 6 //not working
 #define PIN_SENSOR_C 8
 #define PIN_SENSOR_D_1 13
 #define PIN_SENSOR_E 12
 #define PIN_SENSOR_B_2 A0 // NEW
-#define PIN_SENSOR_D_2 A5 //11 
+#define PIN_SENSOR_D_2 A5 //Not Working
+#define PIN_SENSOR_F A4
 
 // STEPPER SHIT
 
@@ -17,17 +18,12 @@
 #define STEPPER_TIME_INTERVAL 1000
 
 
-#define PIN_RED2_DEBUG A2
-#define PIN_RED_DEBUG A3
-#define PIN_GREEN_DEBUG A4
-
-
 #define PIN_COMMS_IN_GYRO        2
 #define PIN_OUTPUT_MOTOR_CONTROL 10 //changed from 3
 #define PIN_OUTPUT_SPEED_CONTROL 9
-#define PIN_INPUT_BUMPER         A0
+//#define PIN_INPUT_BUMPER         A0
 
-#define PIN_GAME_START           11 // used to be 10
+#define PIN_GAME_START           11 // same
 
 #define TIME_INTERVAL      500
 #define JIGGLE_INTERVAL    400
@@ -61,7 +57,6 @@
 
 static bool startGyroNegative = false;
 
-static bool pivot_CC;
 
 volatile int prev_time_comms = 0;
 volatile int pwm_value_comms = 0;
@@ -122,7 +117,7 @@ void setup() {
   SetupPins();
   
   alignLeft=true;
-  pivot_CC = false;
+//  pivot_CC = false;
   
   TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
 
@@ -133,17 +128,10 @@ void setup() {
 
 
 void loop() {
-  Serial.println(digitalRead(PIN_SENSOR_B_1));
-  UpdateTapeSensorVars();
-  // we know the tape sensor values are right noe
-  CheckGlobalStates();
-  
-  //Serial.println(digitalRead(PIN_GAME_START));
-//  if(TMRArd_IsTimerExpired(TIMER_0)){
-//    String toprint = "state: " + (String)state + "\nA: " + (String)isTapeOn_A + " B:"+(String)isTapeOn_B + " C:" + (String)isTapeOn_C + " D:" + (String)isTapeOn_D + " E:" + (String)isTapeOn_E;
-//    Serial.println(state);
-//    TMRArd_InitTimer(TIMER_0, TIME_INTERVAL); 
-//  }
+// Serial.println(decodeSignalFromComms());
+  makeMotorSpeedFast();
+  makeMotorsS();
+  //CheckGlobalStates();
 }
 
 void CheckGlobalStates(void){
@@ -182,12 +170,6 @@ void CheckGlobalStates(void){
   }
   
 }
-
-void RespYolo(){
-  delay(1000);
-  makeMotorsStop();
-}
-
 void findFreqComms(){
   attachInterrupt(digitalPinToInterrupt(PIN_COMMS_IN_GYRO), freqCountComms, FALLING);
   prev_time_comms = micros();
@@ -215,7 +197,7 @@ void RespAtBackOfBox(){
     makeMotorSpeedNormal();
     makeMotorsMoveForward();
     //was tape sensor c
-    if (ReadTapeSensor_B_1()){
+    if (ReadTapeSensor_B_2()){
       state = CROSSED_FIRST_LINE;
       fake_timer = millis();
     }
@@ -225,7 +207,7 @@ void RespAtBackOfBox(){
 void RespCrossedFirstLine(){
   Serial.println("crossed_first_line");
   if(millis()-fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
-    if(ReadTapeSensor_B_1()){
+    if(ReadTapeSensor_B_2()){
       // we are on the second line
       state = SHOOT_ON_SECOND_LINE;
       makeMotorsStop();
@@ -295,7 +277,7 @@ void endShoot(){
 
 void RespLookingForThirdLine(){
   if(millis()-fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
-    if(ReadTapeSensor_B_1()){
+    if(ReadTapeSensor_B_2()){
       // we see a third line
       makeMotorsStop();
       state = SHOOT_ON_THIRD_LINE;
@@ -438,7 +420,6 @@ void RespToStart(){
    int comm_ret = decodeSignalFromComms();
   if(startGyroNegative && (comm_ret == 0)){
     analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CC);
-    digitalWrite(PIN_GREEN_DEBUG, LOW);
     //makeMotorsSpinCL();
   } else if(!startGyroNegative && (comm_ret == 1)){
     analogWrite(PIN_OUTPUT_MOTOR_CONTROL, COMM_MOTOR_SPIN_CL);
@@ -660,14 +641,10 @@ void SetupPins(){
   pinMode(PIN_SENSOR_D_1, INPUT);
   pinMode(PIN_SENSOR_D_2, INPUT);
   pinMode(PIN_SENSOR_E, INPUT);
-
-  pinMode(PIN_RED_DEBUG, OUTPUT);
-  pinMode(PIN_GREEN_DEBUG, OUTPUT);
-  pinMode(PIN_RED2_DEBUG, OUTPUT);
   
   pinMode(PIN_OUTPUT_MOTOR_CONTROL, OUTPUT);
   pinMode(PIN_OUTPUT_SPEED_CONTROL, OUTPUT);
-  pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
+  //pinMode(PIN_INPUT_BUMPER, INPUT_PULLUP);
   pinMode(PIN_GAME_START, INPUT_PULLUP);
 
   pinMode(PULSE_STEPPER, OUTPUT);

@@ -70,8 +70,9 @@ static int motor_speed3_slow= 100;
 static int motor_speed4_slow= 100; // might have to do fancy rev thing
 
 
+volatile unsigned int timeDiff = 0;
 volatile int pwm_value_motor_control = 0;
-volatile int prev_time_motor_control = 0;
+volatile unsigned int prev_time_motor_control = 0;
 volatile int pwm_value_motor_speed = 0;
 volatile int prev_time_motor_speed = 0;
 
@@ -102,8 +103,8 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
   SetupPins();
   jiggleClockwise = true;
   
-  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
-  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
+  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, CHANGE);
   analogWrite(WHEEL_ONE_ENABLE, motor_speed1);
   analogWrite(WHEEL_TWO_ENABLE, motor_speed2);
   analogWrite(WHEEL_THREE_ENABLE, motor_speed3);
@@ -118,6 +119,13 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
+//   Serial.print("tripped ");
+//  Serial.println(timeDiff);
+//  Serial.print("prev time");
+//  Serial.print(prev_time_motor_control);
+//  Serial.print(" pwm_value: ");
+//  Serial.println(pwm_value_motor_control);
+//  Serial.println(millis());
   //goForwardCrossDir();
   decodeSignalsFromBrain();
   communicateGyroInfo();
@@ -199,8 +207,8 @@ void updateMotorSpeeds(){
 }
 
 void decodeSignalsFromBrain(){
-  int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 11);
-  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 11);
+  int motorstate = map(pwm_value_motor_control, 0, 1920, 0, 22);
+  int motorspeed = map(pwm_value_motor_speed, 0, 1920, 0, 22);
 
 
   // 20 --> 0 normal speed
@@ -284,25 +292,31 @@ void decodeSignalsFromBrain(){
 }
 
 void findFreqMotorControl(){
-  attachInterrupt(digitalPinToInterrupt(MotorControlPin), freqCountMotorControl, FALLING);
+  //attachInterrupt(digitalPinToInterrupt(MotorControlPin), freqCountMotorControl, FALLING);
+  timeDiff = micros() - prev_time_motor_control; 
+  if(timeDiff < 900){
+     pwm_value_motor_control = timeDiff; 
+  }
+ 
   prev_time_motor_control = micros();
-}
-void freqCountMotorControl(){
-  attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
-  pwm_value_motor_control = micros() - prev_time_motor_control;
+  
+//}
+//void freqCountMotorControl(){
+  //attachInterrupt(digitalPinToInterrupt(MotorControlPin), findFreqMotorControl, RISING);
+  
 //  Serial.print("MOTOR CONTROL ");
 //  Serial.println(pwm_value_motor_control);
 }
 
 void findFreqMotorSpeedControl(){
-  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), freqCountMotorSpeedControl, FALLING);
-  prev_time_motor_speed = micros();
-}
-void freqCountMotorSpeedControl(){
-  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
-  pwm_value_motor_speed = micros() - prev_time_motor_speed;
-//   Serial.print("MOTOR SPEED ");
-//  Serial.println(pwm_value_motor_speed);
+////  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), freqCountMotorSpeedControl, FALLING);
+//  prev_time_motor_speed = micros();
+//}
+//void freqCountMotorSpeedControl(){
+////  attachInterrupt(digitalPinToInterrupt(MotorSpeedControlPin), findFreqMotorSpeedControl, RISING);
+//  pwm_value_motor_speed = micros() - prev_time_motor_speed;
+////   Serial.print("MOTOR SPEED ");
+////  Serial.println(pwm_value_motor_speed);
 }
 
 void SetupPins() {  

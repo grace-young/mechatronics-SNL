@@ -4,7 +4,7 @@
 #define PIN_SENSOR_D_1 A3
 #define PIN_SENSOR_B_2 A4 // NEW
 #define PIN_SENSOR_D_2 13 //Not Working
-#define PIN_SENSOR_F 12
+#define PIN_SENSOR_F   12
 
 // ----- COMMM PINS --------
 #define PIN_COMMS_IN_GYRO        2
@@ -49,6 +49,8 @@
 #define TIME_WAIT_AFTER_SHOOT 3000
 
 #define TIME_TO_WAIT_FOR_TAPE 100
+
+#define TIME_TO_WAIT_TIL_FIRST_TAPE 1500
 
 #define TIME_TO_PAUSE      1250
 
@@ -103,9 +105,7 @@ void setup() {
 }
 
 void loop() {
-  //Serial.println(decodeSignalFromComms());
-  //makeMotorSpeedFast();
-  //makeMotorsMoveLeft();
+ //Serial.println(digitalRead(PIN_SENSOR_F));
   CheckGlobalStates();
 }
 
@@ -244,7 +244,7 @@ void RespSlamLeft(){
     if(millis() - fake_timer > TIME_TO_SLAM_LEFT){
       makeMotorsStop();
       armEye();
-      delay(1000);
+      delay(TIME_TO_WAIT_TIL_FIRST_TAPE);
       makeMotorsMoveForward();
       state = LOOK_FOR_FIRST_TAPE;
     }
@@ -254,14 +254,14 @@ void RespSlamLeft(){
 void RespLookForFirstTape(){
     // stop at first tape
     if(ReadTapeSensor_EYE()){
-      makeMotorSpeedSlow();
+      makeMotorSpeedSlow(); ``````````````
       state = FOUND_FIRST_TAPE;
       fake_timer = millis();
     }
 }
 
 void RespFoundFirstTape(){
-  if(!ReadTapeSensor_EYE() && millis()-fake_timer > TIME_TO_WAIT_FOR_TAPE){
+  if(!ReadTapeSensor_EYE() && millis() - fake_timer > TIME_TO_WAIT_FOR_TAPE){
     // we no longer read it, must be at the end here.
     makeMotorsStop();
     shootOn();
@@ -279,11 +279,12 @@ void RespShootFromFirst(){
     makeMotorSpeedFast();
     makeMotorsMoveForward();
     state = LOOK_FOR_SECOND_TAPE;
+    fake_timer = millis();
   }
 }
 
 void RespLookForSecondTape(){
-  if(ReadTapeSensor_EYE()){
+  if(ReadTapeSensor_EYE() && millis() - fake_timer > TIME_BETWEEN_LINE_TAPE_READS){
     // could make motors go slower here
     makeMotorSpeedSlow();
     state = FOUND_SECOND_TAPE;
@@ -386,7 +387,6 @@ void RespBackToReload(){
   if(millis()-fake_timer > TIME_TO_RELOAD){
     // ALL BALLS SHOULD BE RELOADED NOW
     
-
     if(numRuns < HOW_MANY_RUNS){
       // DO IT ALL AGAIN
       numRuns++;

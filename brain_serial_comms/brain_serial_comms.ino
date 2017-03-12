@@ -71,8 +71,6 @@ const char COMM_MOTOR_BACKWARD_JIGGLE = 'm';
 // =========================================
 
 //commands to Brain 
-const char GYRO_NEGATIVE              = 'n';
-const char GYRO_POSITIVE              = 'o';
 
 // -------- FAKE TIMERS ----------
 static unsigned long fake_timer;
@@ -106,14 +104,13 @@ static bool alignLeft;
 void setup() {
   SetupPins();
 
-  Serial.begin(57600);
+  Serial.begin(9600);
   
   state = WAIT;
-    
+  
   alignLeft=true;
   
   // unclear if we need this
-  makeMotorSpeedNormal();
   fake_timer = millis();
 }
 
@@ -121,13 +118,16 @@ void setup() {
 void loop() {
     // we know the tape sensor values are right noe
     CheckGlobalStates();
+    
+    //makeMotorsMoveForward();
+    delay(10);
 }
 
 void CheckGlobalStates(void){
   switch (state){
     case WAIT:
       RespToWait();
-      break;
+ /*     break;
     case START:
       RespToStart();
       break;
@@ -152,26 +152,15 @@ void CheckGlobalStates(void){
     case SHOOT_DONE:
       RespShootDone();
       break;
+   */
     default:
       break;
   }
 }
 
-int decodeSignalFromComms(){
-  char comm_state = 'a';
-  switch (comm_state){
-    case GYRO_NEGATIVE:
-        return 0;
-    case GYRO_POSITIVE:
-        return 1;
-    default:
-      return 0;
-  }
-}
 
 void RespAtBackOfBox(){
-    makeMotorSpeedNormal();
-    makeMotorsMoveForward();
+    
     //was tape sensor c
     if (ReadTapeSensor_B_1()){
       state = CROSSED_FIRST_LINE;
@@ -186,6 +175,7 @@ void RespCrossedFirstLine(){
       // we are on the second line
       state = SHOOT_ON_SECOND_LINE;
       makeMotorsStop();
+      delay(10);
     }
   }
   
@@ -200,7 +190,9 @@ void RespShootOnSecondLine(){
     state = LOOKING_FOR_THIRD_LINE;
     shoot_count = 0;
     makeMotorSpeedNormal();
+    delay(10);
     makeMotorsMoveForward();
+    delay(10);
     fake_timer = millis(); // set timer
   }
 }
@@ -248,6 +240,7 @@ void RespLookingForThirdLine(){
     if(ReadTapeSensor_B_1()){
       // we see a third line
       makeMotorsStop();
+      delay(10);
       state = SHOOT_ON_THIRD_LINE;
     }
   }
@@ -261,7 +254,9 @@ void RespShootOnThirdLine(){
     state = SHOOT_DONE;
     shoot_count = 0;
     makeMotorSpeedNormal();
+    delay(10);
     makeMotorsMoveRight();
+    delay(10);
     fake_timer = millis(); // set timer to count how long we go right
   }
 
@@ -269,12 +264,13 @@ void RespShootOnThirdLine(){
 void RespShootDone(){;
   if(millis()-fake_timer > TIME_MOVE_RIGHT){
     makeMotorsStop();
+    delay(10);
     // robot should be against the wall now.
   }
 }
 
 void RespCountedThreeLines(){
-  makeMotorsMoveRight(); // send only when state changes
+  
 }
 
 void RespToWait(){
@@ -284,45 +280,54 @@ void RespToWait(){
    * 1 - gyro positive
    */
   
-  if(decodeSignalFromComms() == 0){
+  if(!ReadIfGyroPositive()){
       startGyroNegative = true;
   }else{
       startGyroNegative = false;
   }
   if(!digitalRead(PIN_GAME_START)){
     state = START;
+    makeMotorSpeedNormal();
+    delay(10);
   }
 }
 
 void RespToStart(){
     // speed used to be slow but now normal
    //analogWrite(PIN_OUTPUT_SPEED_CONTROL, COMM_MOTOR_NORMAL); 
-   makeMotorSpeedNormal();
+   
   /*
    * 0 - gyro negative
    * 1 - gyro positive
    */
-   int comm_ret = decodeSignalFromComms();
   if(startGyroNegative && !ReadIfGyroPositive()){
     makeMotorsSpinCC();
+    delay(10);
   } else if(!startGyroNegative && ReadIfGyroPositive()){
     makeMotorsSpinCL();
+    delay(10);
   } else{
     state = ORIENTATION_STRAIGHT;
+    makeMotorSpeedFast();
+    delay(10);
+    makeMotorsJiggleBackwards();
+    delay(10);
+
     fake_timer = millis();
   }
 }
 
 void RespOrientationStraight(){
   // stop
-  makeMotorSpeedFast();
-// do we need delay's here???
-  makeMotorsJiggleBackwards();
- 
+   
   // go backward for 2 seconds
   if( millis() - fake_timer >= 2000){
     // go backward
     state = AT_BACK_OF_BOX;
+    makeMotorSpeedNormal();
+    delay(10);
+    makeMotorsMoveForward();
+    delay(10);
     fake_timer = millis();
   }
 }

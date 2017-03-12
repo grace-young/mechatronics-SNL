@@ -42,6 +42,7 @@ void setup() {
 
   myservo.attach(SERVO_PIN_PULSE_OUT);
   myservo.write(servo_angle);
+  retractEye();
 }
 
 void pinSetup() {
@@ -59,7 +60,7 @@ void loop() {
     announceStillShooting();
     sawShoot = true;
   }
-  if(numShot > 3) {
+  if(numShot >= 3) {
     endShoot();
     delay(1000); //is this what we want?
   }
@@ -70,10 +71,10 @@ void loop() {
 
   if (shouldDeployEye() && turn_servo) {
     armEye();
-    Serial.println("ARMED");
+    //Serial.println("ARMED");
   } else if (!shouldDeployEye() && !turn_servo) {
     retractEye();
-    Serial.println("RETRACTED");
+    //Serial.println("RETRACTED");
   } 
 }
 
