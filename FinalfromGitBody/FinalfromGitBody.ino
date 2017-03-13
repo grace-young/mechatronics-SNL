@@ -70,10 +70,10 @@ static int motor_speed3_slow= 100;
 static int motor_speed4_slow= 100; // might have to do fancy rev thing
 
 
-volatile int pwm_value_motor_control = 0;
-volatile int prev_time_motor_control = 0;
-volatile int pwm_value_motor_speed = 0;
-volatile int prev_time_motor_speed = 0;
+static volatile int pwm_value_motor_control = 0;
+static volatile int prev_time_motor_control = 0;
+static volatile int pwm_value_motor_speed = 0;
+static volatile int prev_time_motor_speed = 0;
 
 unsigned long time_last_printed;
 
@@ -118,6 +118,7 @@ I2CwriteByte(MPU9250_ADDRESS,27,GYRO_FULL_SCALE_2000_DPS);
 // TODO: MAKE SURE WE ARE ACTUALLY CHANGING SPEED WHEN CHANGING DIRECTION TOO
 
 void loop() {
+//  Serial.println(millis());
   //goForwardCrossDir();
   decodeSignalsFromBrain();
   communicateGyroInfo();
@@ -163,6 +164,9 @@ void loop() {
   // 100 was nice 
  //Serial.print("orientation");
   //Serial.println(orientation);
+
+
+  
   flag = false;
   if ( (abs(gx) > 600 || abs(gy) > 600)) {
     flag = true;
@@ -209,7 +213,7 @@ void decodeSignalsFromBrain(){
   // 80 --> 3 clear gyro
   // UNCLEAR IF THIS WORKS OR NOT
 //  Serial.println(pwm_value_motor_control);
-  Serial.println(motorstate);
+//  Serial.println(motorstate);
   switch(motorspeed){
     case 0://20
       //Serial.println("0");
@@ -249,7 +253,7 @@ void decodeSignalsFromBrain(){
     case 0://turn everything off 20
       coastStopAll();
       break;
-    case 1://40
+    case 1://40 
       goForwardCrossDir();
       //goForwardOmniDir();
       break;
@@ -259,6 +263,7 @@ void decodeSignalsFromBrain(){
       break;
     case 3://80
       goLeftCrossDir();
+      Wire.endTransmission(true);
       //goLeftOmniDir();
       break;
     case 4://100
@@ -523,7 +528,7 @@ void stopWheelFour() {
 void serialEvent(){
   while (Serial.available()) {
     char inChar = (char)Serial.read();
-    Serial.println(inChar);
+//    Serial.println(inChar);
       if (inChar == 'L' || inChar == 'l') {
           // increase speed
           if(motor_speed1 + 10 <= LIMIT_ON_ANALOG){

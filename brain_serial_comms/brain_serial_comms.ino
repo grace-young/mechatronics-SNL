@@ -158,6 +158,18 @@ void CheckGlobalStates(void){
   }
 }
 
+int decodeSignalFromComms(){
+
+  char comm_state = 'a';
+  switch (comm_state){
+    case GYRO_NEGATIVE:
+        return 0;
+    case GYRO_POSITIVE:
+        return 1;
+    default:
+      return 0;
+  }
+}
 
 void RespAtBackOfBox(){
     
@@ -300,6 +312,11 @@ void RespToStart(){
    * 0 - gyro negative
    * 1 - gyro positive
    */
+<<<<<<< HEAD
+=======
+   int comm_ret = decodeSignalFromComms();
+
+>>>>>>> 5dd5c011dc986fc9bd2bc07ea1484422dffc2f49
   if(startGyroNegative && !ReadIfGyroPositive()){
     makeMotorsSpinCC();
     delay(10);
@@ -319,7 +336,16 @@ void RespToStart(){
 
 void RespOrientationStraight(){
   // stop
+<<<<<<< HEAD
    
+=======
+
+  makeMotorSpeedFast();
+// do we need delay's here???
+
+  makeMotorsJiggleBackwards();
+ 
+>>>>>>> 5dd5c011dc986fc9bd2bc07ea1484422dffc2f49
   // go backward for 2 seconds
   if( millis() - fake_timer >= 2000){
     // go backward
@@ -461,6 +487,7 @@ void SetupPins(){
   pinMode(PIN_GREEN_DEBUG, OUTPUT);
   pinMode(PIN_RED2_DEBUG, OUTPUT);
   
+
   pinMode(PIN_GYRO, INPUT);
   
   pinMode(PIN_COMMS_OUT_HERE_TX, OUTPUT);

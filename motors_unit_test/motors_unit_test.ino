@@ -24,6 +24,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+<<<<<<< HEAD
+    goBackwardsCrossDir();
+=======
     //goRightCrossDir();
     goForwardCrossDir();
     /*turnWheelTwoClockwise();
@@ -31,6 +34,7 @@ void loop() {
     coastStopWheelOne();
     coastStopWheelThree();
     */
+>>>>>>> e53b4f1d47f9e61096ec208a013bec41cdc8d15f
 }
 
 
