@@ -51,10 +51,10 @@
 #define TIME_MOVE_RIGHT           5000
 #define TIME_TO_PIVOT             250
 #define TIME_TO_SLAM_LEFT         2000
-#define TIME_TO_HEAD_BACK         6000 // was 9000 before
+#define TIME_TO_HEAD_BACK         4000
 #define TIME_TO_RELOAD            8000
 #define TIME_TO_RELOAD_MIN        1000
-#define TIME_SHIFT_IN             400
+#define TIME_SHIFT_IN             200
 #define TIME_TO_JIGGLE            1500
 
 #define TIME_TO_SCOOT_OUT         250
@@ -115,7 +115,6 @@ static bool arm_already_in_beginning = false;
 void setup() {
   Serial.begin(9600);
 
-  game_timer = 0;
   SetupPins();
   makeMotorSpeedNormal();
 
@@ -137,6 +136,7 @@ void loop() {
     state = DONE;
   }
   CheckGlobalStates();
+  //Serial.println(ReadTapeSensor_EYE());
 }
 
 void CheckGlobalStates(void){
@@ -242,7 +242,6 @@ void RespWait(){
   }
   delay(150); // ????? might not need
   if(!digitalRead(PIN_GAME_START)){
-    game_timer = millis();
     state = START;
     //state = DONE;
     //state = JUMP_SHOOT;
@@ -380,11 +379,11 @@ void RespFoundSecondTape(){
 
 void RespShootFromSecond(){
   // do all the shooting things here
-  if(shootDone() || millis() - fake_timer > TIME_WAIT_AFTER_SHOOT){//was and before
+  if(shootDone() && millis() - fake_timer > TIME_WAIT_AFTER_SHOOT){//was and before
 //    resetBody();
     makeMotorSpeedFast();
-    makeMotorsMoveForward(); // lol this was backwards before
-    state = LOOK_FOR_THIRD_TAPE;
+    makeMotorsMoveRight(); // lol this was backwards before
+    state = SHIFT_IN;
     fake_timer = millis();
   }
 }
@@ -475,10 +474,10 @@ void RespScootIntoBox(){
 
 void RespMostlyInBox(){
   // maybe add backup time here ???????
-  if(true){//ReadTapeSensor_EYE()
-     makeMotorsStop();
+  if(true){
     disarmEye(); // this might need to go after stop
     // but don't want to have to wait for the rest arduino
+    makeMotorsStop();
     loaded_first_already = false;
     aimTower = -1;
     state = RELOAD;
